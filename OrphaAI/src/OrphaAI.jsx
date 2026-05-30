@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-const API_BASE = "http://localhost:5000/api/v1";
+const API_BASE = "https://orphaai-backend.onrender.com/api/v1";
 
 const COLORS = {
   teal: "#0F6E56",

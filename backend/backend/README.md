@@ -12,7 +12,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Server: **http://localhost:5000**
+Server: **https://orphaai-backend.onrender.com**
 
 ## Demo Credentials
 
@@ -114,22 +114,22 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ```bash
 # 1. Login
-TOKEN=$(curl -s -X POST http://localhost:5000/api/v1/auth/login \
+TOKEN=$(curl -s -X POST https://orphaai-backend.onrender.com/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@orphaai.com","password":"Demo1234"}' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['accessToken'])")
 
 # 2. Run prediction
-curl -X POST http://localhost:5000/api/v1/predictions/run \
+curl -X POST https://orphaai-backend.onrender.com/api/v1/predictions/run \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"disease_name":"Alzheimer'\''s Disease","model":"ensemble","top_n":5,"min_score":0.40}'
 
 # 3. Search diseases
-curl http://localhost:5000/api/v1/diseases?q=alzheimer \
+curl https://orphaai-backend.onrender.com/api/v1/diseases?q=alzheimer \
   -H "Authorization: Bearer $TOKEN"
 
 # 4. View network
-curl http://localhost:5000/api/v1/network/disease/1 \
+curl https://orphaai-backend.onrender.com/api/v1/network/disease/1 \
   -H "Authorization: Bearer $TOKEN"
 ```

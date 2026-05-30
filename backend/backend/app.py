@@ -5,7 +5,7 @@
 ║                                                                  ║
 ║  Run:  pip install -r requirements.txt                          ║
 ║        python app.py                                            ║
-║  API:  http://localhost:5000                                     ║
+║  API:  https://orphaai-backend.onrender.com                                   ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
 
