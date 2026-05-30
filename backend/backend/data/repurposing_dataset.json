@@ -1,0 +1,146 @@
+[
+  {
+    "disease": "Alzheimer’s Disease",
+    "current_drug": "Memantine",
+    "potential_repurposed_drug": "Metformin",
+    "original_use": "Diabetes Mellitus",
+    "why_repurposed": "May improve brain insulin signaling and reduce neurodegeneration",
+    "evidence_strength": "Moderate–Strong Literature",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Parkinson’s Disease",
+    "current_drug": "Levodopa",
+    "potential_repurposed_drug": "Exenatide",
+    "original_use": "Diabetes Mellitus",
+    "why_repurposed": "Neuroprotective effect on dopaminergic neurons",
+    "evidence_strength": "Clinical Trial Evidence (Strong)",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Parkinson’s Disease",
+    "current_drug": "Pramipexole",
+    "potential_repurposed_drug": "Ambroxol",
+    "original_use": "Respiratory disorders",
+    "why_repurposed": "Supports lysosomal function and GBA pathway implicated in Parkinson’s",
+    "evidence_strength": "Clinical Investigational (Moderate–Strong)",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Cystic Fibrosis",
+    "current_drug": "Ivacaftor",
+    "potential_repurposed_drug": "Sildenafil",
+    "original_use": "Erectile dysfunction/Pulmonary hypertension",
+    "why_repurposed": "Experimental evidence suggests possible CFTR modulation",
+    "evidence_strength": "Weak–Moderate Experimental",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Duchenne Muscular Dystrophy",
+    "current_drug": "Eteplirsen",
+    "potential_repurposed_drug": "Metformin",
+    "original_use": "Diabetes Mellitus",
+    "why_repurposed": "May improve mitochondrial function in muscle",
+    "evidence_strength": "Moderate Preclinical/Investigational",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Spinal Muscular Atrophy",
+    "current_drug": "Nusinersen",
+    "potential_repurposed_drug": "Valproic Acid",
+    "original_use": "Epilepsy",
+    "why_repurposed": "May increase SMN protein expression",
+    "evidence_strength": "Moderate Evidence",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Amyotrophic Lateral Sclerosis (ALS)",
+    "current_drug": "Riluzole",
+    "potential_repurposed_drug": "Masitinib",
+    "original_use": "Mast cell disorders",
+    "why_repurposed": "May reduce neuroinflammation",
+    "evidence_strength": "Clinical Trial Evidence (Moderate–Strong)",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Huntington’s Disease",
+    "current_drug": "Tetrabenazine",
+    "potential_repurposed_drug": "Metformin",
+    "original_use": "Diabetes Mellitus",
+    "why_repurposed": "Possible neuroprotective and metabolic benefits",
+    "evidence_strength": "Moderate Literature",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Multiple Sclerosis",
+    "current_drug": "Interferon beta",
+    "potential_repurposed_drug": "Simvastatin",
+    "original_use": "Hypercholesterolemia",
+    "why_repurposed": "Anti-inflammatory and neuroprotective effects",
+    "evidence_strength": "Clinical Trial Evidence (Strong)",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Epilepsy",
+    "current_drug": "Valproic Acid",
+    "potential_repurposed_drug": "Cannabidiol",
+    "original_use": "Pain/neurological disorders",
+    "why_repurposed": "Modulates neuronal excitability",
+    "evidence_strength": "Approved/Very Strong",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Depression",
+    "current_drug": "Fluoxetine",
+    "potential_repurposed_drug": "Ketamine",
+    "original_use": "Anesthesia",
+    "why_repurposed": "Rapid antidepressant effect via NMDA pathway",
+    "evidence_strength": "Approved/Very Strong",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Breast Cancer",
+    "current_drug": "Tamoxifen",
+    "potential_repurposed_drug": "Metformin",
+    "original_use": "Diabetes Mellitus",
+    "why_repurposed": "May suppress tumor metabolism and proliferation",
+    "evidence_strength": "Strong Clinical Literature",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Non-Small Cell Lung Cancer",
+    "current_drug": "Gefitinib",
+    "potential_repurposed_drug": "Aspirin",
+    "original_use": "Pain/Inflammation",
+    "why_repurposed": "Anti-inflammatory effects may reduce tumor progression",
+    "evidence_strength": "Moderate Literature",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Chronic Kidney Disease",
+    "current_drug": "ACE inhibitors",
+    "potential_repurposed_drug": "Allopurinol",
+    "original_use": "Gout",
+    "why_repurposed": "May reduce oxidative stress and kidney damage",
+    "evidence_strength": "Moderate Clinical Evidence",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "COVID-19",
+    "current_drug": "Remdesivir",
+    "potential_repurposed_drug": "Dexamethasone",
+    "original_use": "Inflammatory disorders",
+    "why_repurposed": "Suppresses cytokine storm and inflammation",
+    "evidence_strength": "Approved/Very Strong",
+    "source": "Mydataset.xlsx"
+  },
+  {
+    "disease": "Rheumatoid Arthritis",
+    "current_drug": "Methotrexate",
+    "potential_repurposed_drug": "Minocycline",
+    "original_use": "Bacterial infections",
+    "why_repurposed": "Anti-inflammatory and immune modulation",
+    "evidence_strength": "Clinical Evidence (Moderate–Strong)",
+    "source": "Mydataset.xlsx"
+  }
+]
