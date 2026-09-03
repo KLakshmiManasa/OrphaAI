@@ -1,0 +1,27 @@
+services:
+  # Flask Backend Web Service
+  - type: web
+    name: orphaai-backend
+    env: python
+    region: oregon
+    buildCommand: cd backend/backend && pip install -r requirements.txt
+    startCommand: cd backend/backend && gunicorn --bind 0.0.0.0:$PORT app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+
+  # React Web Frontend Static Site
+  - type: web
+    name: orphaai-frontend
+    env: static
+    region: oregon
+    buildCommand: cd OrphaAI && npm install && npm run build
+    staticPublishPath: OrphaAI/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
