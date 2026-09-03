@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const API_BASE = "https://orphaai-backend.onrender.com/api/v1";
+export const API_BASE = "https://orphaai-backend-nebu.onrender.com/api/v1";
 
 export async function getAccessToken() {
   return AsyncStorage.getItem("accessToken");
