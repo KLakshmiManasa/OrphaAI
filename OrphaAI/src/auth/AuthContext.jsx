@@ -478,6 +478,10 @@ export function AuthProvider({ children }) {
     return loginWithGooglePopup();
   }, [loginWithGooglePopup]);
 
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
+
   // -------------------------------------------------------------------------
   // Context value
   // -------------------------------------------------------------------------
