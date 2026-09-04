@@ -18,7 +18,7 @@ export default function GoogleSignInButton({
   // eslint-disable-next-line no-unused-vars
   onCredential,
 }) {
-  const { loginWithGoogleOAuth, loginWithGoogleCredential } = useAuth();
+  const { loginWithGoogleOAuth, loginWithGoogleCredential, loginWithGooglePopup } = useAuth();
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -72,7 +72,11 @@ export default function GoogleSignInButton({
   const handleClickFallback = async () => {
     if (disabled) return;
     try {
-      await loginWithGoogleOAuth();
+      if (loginWithGooglePopup) {
+        await loginWithGooglePopup();
+      } else {
+        await loginWithGoogleOAuth();
+      }
     } catch (err) {
       onError?.(err?.message ?? "Google sign-in failed. Please try again.");
     }

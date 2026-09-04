@@ -339,26 +339,77 @@ export function AuthProvider({ children }) {
   }, [doExchange, loginWithGoogleCredential]);
 
   // -------------------------------------------------------------------------
+  // Google OAuth via direct GIS Popup (No redirect_uri required)
+  // -------------------------------------------------------------------------
+  const loginWithGooglePopup = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      setError("");
+      const googleClientId =
+        import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+        "645276021991-2npbgjkdq4ih7oumiqb632tcfc411eds.apps.googleusercontent.com";
+
+      if (typeof window === "undefined" || !window.google?.accounts?.oauth2) {
+        const err = new Error("Google Identity Services library is loading. Please try again in a moment.");
+        setError(err.message);
+        return reject(err);
+      }
+
+      try {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: googleClientId,
+          scope: "openid email profile",
+          callback: async (tokenResponse) => {
+            if (tokenResponse.error) {
+              const err = new Error(tokenResponse.error_description || tokenResponse.error || "Google sign-in cancelled.");
+              setError(err.message);
+              return reject(err);
+            }
+            if (tokenResponse.access_token) {
+              try {
+                const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                });
+                const info = await userInfoRes.json();
+
+                const res = await fetch(`${API_BASE}/auth/google-supabase`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    email: info.email,
+                    full_name: info.name || `${info.given_name || ""} ${info.family_name || ""}`.trim(),
+                    avatar_url: info.picture || "",
+                    supabase_uid: info.sub,
+                  }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                  throw new Error(data.error || "Backend authentication failed.");
+                }
+
+                const loggedUser = finishFlaskLogin(data);
+                resolve(loggedUser);
+              } catch (err) {
+                setError(err.message || "Failed to complete Google authentication.");
+                reject(err);
+              }
+            }
+          },
+        });
+
+        client.requestAccessToken();
+      } catch (err) {
+        setError(err.message || "Failed to initialize Google login popup.");
+        reject(err);
+      }
+    });
+  }, [finishFlaskLogin]);
+
+  // -------------------------------------------------------------------------
   // Google OAuth via GIS or Supabase fallback
   // -------------------------------------------------------------------------
   const loginWithGoogleOAuth = useCallback(async () => {
-    setError("");
-    exchangingRef.current = false; // reset guard for fresh attempt
-
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "645276021991-2npbgjkdq4ih7oumiqb632tcfc411eds.apps.googleusercontent.com";
-
-    // Direct Google OAuth 2.0 endpoint (Zero dependency on dead Supabase URLs)
-    const redirectUri = window.location.origin;
-    const nonce = Math.random().toString(36).substring(2);
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${encodeURIComponent(googleClientId)}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&response_type=id_token` +
-      `&scope=${encodeURIComponent("openid email profile")}` +
-      `&nonce=${nonce}`;
-
-    window.location.href = googleAuthUrl;
-  }, []);
+    return loginWithGooglePopup();
+  }, [loginWithGooglePopup]);
 
   // -------------------------------------------------------------------------
   // Context value
@@ -372,6 +423,7 @@ export function AuthProvider({ children }) {
       registerWithPassword,
       loginWithGoogleOAuth,
       loginWithGoogleCredential,
+      loginWithGooglePopup,
       logout,
       refreshUser: restoreSession,
     }),
@@ -380,6 +432,7 @@ export function AuthProvider({ children }) {
       initializing,
       loginWithGoogleCredential,
       loginWithGoogleOAuth,
+      loginWithGooglePopup,
       loginWithPassword,
       logout,
       registerWithPassword,
