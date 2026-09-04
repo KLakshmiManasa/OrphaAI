@@ -6,7 +6,8 @@ import GoogleSignInButton from "./components/GoogleSignInButton";
 import OrphaAIChatbot from "./components/OrphaAIChatbot";
 import { downloadPdfReport, uniqueReportFilename } from "./services/pdfExportService";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api/v1";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://orphaai-backend-nebu.onrender.com/api/v1";
+const FALLBACK_API_BASE = "http://localhost:5000/api/v1";
 
 const COLORS = {
   teal: "#0F6E56",
@@ -34,8 +35,6 @@ const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$
 function token() {
   return localStorage.getItem("orphaai_access_token") || "";
 }
-
-const FALLBACK_API_BASE = "https://orphaai-backend-nebu.onrender.com/api/v1";
 
 async function api(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
