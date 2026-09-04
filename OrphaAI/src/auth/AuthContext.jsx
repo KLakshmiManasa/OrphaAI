@@ -219,13 +219,64 @@ export function AuthProvider({ children }) {
   }, []);
 
   // -------------------------------------------------------------------------
+  // Flask session finish helper
+  // -------------------------------------------------------------------------
+  const finishFlaskLogin = useCallback((data) => {
+    storeFlaskSession(data);
+    const norm = normaliseFlaskUser(data.user);
+    setUser(norm);
+    setError("");
+    return norm;
+  }, []);
+
+  const loginWithPassword = useCallback(
+    async ({ email, password }) => {
+      setError("");
+      const data = await authRequest("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      return finishFlaskLogin(data);
+    },
+    [finishFlaskLogin]
+  );
+
+  const registerWithPassword = useCallback(
+    async ({ email, password, firstName, lastName, institution }) => {
+      setError("");
+      const data = await authRequest("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ email, password, firstName, lastName, institution }),
+      });
+      return finishFlaskLogin(data);
+    },
+    [finishFlaskLogin]
+  );
+
+  // -------------------------------------------------------------------------
+  // Direct Google ID Token Authentication via Flask API (/auth/google)
+  // -------------------------------------------------------------------------
+  const loginWithGoogleCredential = useCallback(
+    async (credential) => {
+      setError("");
+      const res = await fetch(`${API_BASE}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data.error || `Google authentication failed (${res.status})`;
+        setError(msg);
+        throw new Error(msg);
+      }
+      return finishFlaskLogin(data);
+    },
+    [finishFlaskLogin]
+  );
+
+  // -------------------------------------------------------------------------
   // Session restore on app load
-  //
-  // Order of precedence:
-  //  1. Existing valid Flask JWT in localStorage → just validate with /auth/me
-  //  2. Active Supabase session (returning from OAuth redirect, or persisted) →
-  //     exchange for Flask JWT
-  //  3. Nothing → user stays null (unauthenticated)
   // -------------------------------------------------------------------------
   const restoreSession = useCallback(async () => {
     setInitializing(true);
@@ -286,96 +337,6 @@ export function AuthProvider({ children }) {
       setInitializing(false);
     }
   }, [doExchange, loginWithGoogleCredential]);
-
-  // -------------------------------------------------------------------------
-  // Supabase auth state listener
-  //
-  // SIGNED_IN fires when:
-  //   • User completes Google OAuth redirect and lands back on the app
-  //   • Supabase restores a persisted session on page load
-  //
-  // SIGNED_OUT fires when supabase.auth.signOut() is called.
-  // -------------------------------------------------------------------------
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "SIGNED_IN" && session?.user) {
-          // If we already have a Flask JWT skip — restoreSession handled/handles it.
-          // When returning from Google OAuth redirect, restoreSession clears the Flask session,
-          // which ensures this exchange runs immediately.
-          if (storedAccessToken()) return;
-          await doExchange(session.user);
-          clearOAuthCallbackUrl();
-        } else if (event === "SIGNED_OUT") {
-          clearFlaskSession();
-          setUserRef.current(null);
-        }
-      }
-    );
-    return () => subscription.unsubscribe();
-  }, [doExchange]);
-
-  // Run once on mount
-  useEffect(() => {
-    restoreSession();
-  }, [restoreSession]);
-
-  // -------------------------------------------------------------------------
-  // Flask email/password auth — completely unchanged from original
-  // -------------------------------------------------------------------------
-  const finishFlaskLogin = useCallback((data) => {
-    storeFlaskSession(data);
-    const norm = normaliseFlaskUser(data.user);
-    setUser(norm);
-    setError("");
-    return norm;
-  }, []);
-
-  const loginWithPassword = useCallback(
-    async ({ email, password }) => {
-      setError("");
-      const data = await authRequest("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-      return finishFlaskLogin(data);
-    },
-    [finishFlaskLogin]
-  );
-
-  const registerWithPassword = useCallback(
-    async ({ email, password, firstName, lastName, institution }) => {
-      setError("");
-      const data = await authRequest("/auth/register", {
-        method: "POST",
-        body: JSON.stringify({ email, password, firstName, lastName, institution }),
-      });
-      return finishFlaskLogin(data);
-    },
-    [finishFlaskLogin]
-  );
-
-  // -------------------------------------------------------------------------
-  // Direct Google ID Token Authentication via Flask API (/auth/google)
-  // -------------------------------------------------------------------------
-  const loginWithGoogleCredential = useCallback(
-    async (credential) => {
-      setError("");
-      const res = await fetch(`${API_BASE}/auth/google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg = data.error || `Google authentication failed (${res.status})`;
-        setError(msg);
-        throw new Error(msg);
-      }
-      return finishFlaskLogin(data);
-    },
-    [finishFlaskLogin]
-  );
 
   // -------------------------------------------------------------------------
   // Google OAuth via GIS or Supabase fallback
