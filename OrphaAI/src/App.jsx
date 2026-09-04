@@ -1,8 +1,13 @@
-import { useState } from 'react'
 import './App.css'
 import OrphaAI from './OrphaAI'
+import { AuthProvider } from './auth/AuthContext'
+
 function App() {
-  return <OrphaAI/>
+  return (
+    <AuthProvider>
+      <OrphaAI/>
+    </AuthProvider>
+  )
 }
 
 export default App

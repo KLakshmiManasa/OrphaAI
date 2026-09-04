@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ORPHAAI_LOGO_ALT, ORPHAAI_LOGO_SRC } from "./assets/logo";
+import ProtectedRoute from "./auth/ProtectedRoute";
+import { useAuth } from "./auth/AuthContext";
+import GoogleSignInButton from "./components/GoogleSignInButton";
+import OrphaAIChatbot from "./components/OrphaAIChatbot";
+import { downloadPdfReport, uniqueReportFilename } from "./services/pdfExportService";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://orphaai-backend-nebu.onrender.com/api/v1";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api/v1";
 
 const COLORS = {
   teal: "#0F6E56",
@@ -41,31 +47,9 @@ async function api(path, options = {}) {
   return payload;
 }
 
-function saveSession(payload) {
-  localStorage.setItem("orphaai_access_token", payload.accessToken);
-  localStorage.setItem("orphaai_refresh_token", payload.refreshToken);
-}
-
-function clearSession() {
-  localStorage.removeItem("orphaai_access_token");
-  localStorage.removeItem("orphaai_refresh_token");
-}
-
 function userLabel(user) {
   if (!user) return "";
   return `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email || "User";
-}
-
-function downloadFile(filename, content, type = "application/json") {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
 }
 
 function escapePdfText(text) {
@@ -127,7 +111,20 @@ function Badge({ children, tone = "teal" }) {
 }
 
 function Panel({ children, style }) {
-  return <div style={{ background: COLORS.white, border: `1px solid ${COLORS.gray100}`, borderRadius: 8, padding: 24, ...style }}>{children}</div>;
+  return <div style={{ background: COLORS.white, border: `1px solid ${COLORS.gray100}`, borderRadius: 8, padding: 24, boxSizing: "border-box", maxWidth: "100%", minWidth: 0, ...style }}>{children}</div>;
+}
+
+function LogoMark({ size = 36, showText = false, color = COLORS.teal }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+      <img src={ORPHAAI_LOGO_SRC} alt={ORPHAAI_LOGO_ALT} style={{ width: size, height: size, objectFit: "contain", flex: `0 0 ${size}px` }} />
+      {showText && <span style={{ fontFamily: "Georgia, serif", fontSize: Math.max(18, Math.round(size * 0.62)), fontWeight: 800, color, whiteSpace: "nowrap" }}>Orpha<span style={{ color: COLORS.gray800 }}>AI</span></span>}
+    </span>
+  );
+}
+
+function PageShell({ children, maxWidth = 1080, style }) {
+  return <main className="orpha-page" style={{ maxWidth, width: "100%", margin: "0 auto", padding: "42px 24px", boxSizing: "border-box", overflowX: "hidden", ...style }}>{children}</main>;
 }
 
 function Modal({ title, onClose, children }) {
@@ -193,38 +190,29 @@ function inputStyle(extra = {}) {
   };
 }
 
-function NavBar({ page, setPage, user, setUser }) {
+function NavBar({ page, setPage, user, logout }) {
+  const [profileOpen, setProfileOpen] = useState(false);
   const nav = [
     ["home", "Home"],
     ["predict", "Predict"],
     ["network", "Interaction Network"],
-    ["chatbot", "AI Chatbot"],
     ["drugs", "Drug Library"],
     ["diseases", "Disease Library"],
   ];
 
-  const logout = () => {
-    clearSession();
-    setUser(null);
+  const handleLogout = () => {
+    logout();
+    setProfileOpen(false);
     setPage("home");
   };
 
   return (
-    <nav style={{ background: COLORS.white, borderBottom: `1px solid ${COLORS.gray100}`, padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 64, position: "sticky", top: 0, zIndex: 10, gap: 16, flexWrap: "wrap" }}>
-      <button onClick={() => setPage("home")} style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
-        <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
-          <circle cx="16" cy="16" r="15" fill={COLORS.teal} />
-          <circle cx="10" cy="13" r="3" fill="white" opacity="0.92" />
-          <circle cx="22" cy="13" r="3" fill="white" opacity="0.92" />
-          <circle cx="16" cy="22" r="3" fill="white" opacity="0.92" />
-          <line x1="10" y1="13" x2="22" y2="13" stroke="white" strokeWidth="1.5" opacity="0.7" />
-          <line x1="10" y1="13" x2="16" y2="22" stroke="white" strokeWidth="1.5" opacity="0.7" />
-          <line x1="22" y1="13" x2="16" y2="22" stroke="white" strokeWidth="1.5" opacity="0.7" />
-        </svg>
-        <span style={{ fontFamily: "Georgia, serif", fontSize: 22, fontWeight: 700, color: COLORS.teal }}>Orpha<span style={{ color: COLORS.gray800 }}>AI</span></span>
+    <nav className="orpha-nav" style={{ background: COLORS.white, borderBottom: `1px solid ${COLORS.gray100}`, padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 64, position: "sticky", top: 0, zIndex: 10, gap: 16, flexWrap: "wrap", boxSizing: "border-box" }}>
+      <button onClick={() => setPage("home")} style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "transparent", cursor: "pointer", padding: 0, minWidth: 0 }}>
+        <LogoMark size={34} showText />
       </button>
 
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
+      <div className="orpha-nav-links" style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center", minWidth: 0 }}>
         {nav.map(([key, label]) => (
           <button key={key} onClick={() => setPage(key)} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: page === key ? COLORS.tealBg : "transparent", color: page === key ? COLORS.teal : COLORS.gray600, fontWeight: page === key ? 700 : 500, cursor: "pointer" }}>
             {label}
@@ -233,10 +221,31 @@ function NavBar({ page, setPage, user, setUser }) {
       </div>
 
       {user ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: COLORS.teal, color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 800 }}>{userLabel(user)[0]}</div>
-          <span style={{ fontSize: 14, color: COLORS.gray800 }}>{userLabel(user)}</span>
-          <button onClick={logout} style={{ border: "none", background: "transparent", color: COLORS.gray600, cursor: "pointer", fontWeight: 700 }}>Log out</button>
+        <div style={{ position: "relative", minWidth: 0 }}>
+          <button onClick={() => setProfileOpen((open) => !open)} style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, border: `1px solid ${COLORS.gray100}`, background: COLORS.white, borderRadius: 8, padding: "5px 9px", cursor: "pointer" }} aria-expanded={profileOpen} aria-label="Open user profile menu">
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt={userLabel(user)} referrerPolicy="no-referrer" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", flex: "0 0 34px" }} />
+            ) : (
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: COLORS.teal, color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 800, flex: "0 0 34px" }}>{userLabel(user)[0]}</div>
+            )}
+            <span style={{ fontSize: 14, color: COLORS.gray800, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userLabel(user)}</span>
+          </button>
+          {profileOpen && (
+            <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 276, maxWidth: "calc(100vw - 32px)", background: COLORS.white, border: `1px solid ${COLORS.gray100}`, borderRadius: 8, boxShadow: "0 18px 46px rgba(4,44,83,0.16)", padding: 14, zIndex: 20 }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={userLabel(user)} referrerPolicy="no-referrer" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flex: "0 0 44px" }} />
+                ) : (
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: COLORS.teal, color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 900, flex: "0 0 44px" }}>{userLabel(user)[0]}</div>
+                )}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ color: COLORS.navy, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userLabel(user)}</div>
+                  <div style={{ color: COLORS.gray600, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</div>
+                </div>
+              </div>
+              <button onClick={handleLogout} style={secondaryButton({ width: "100%", marginTop: 12 })}>Sign Out</button>
+            </div>
+          )}
         </div>
       ) : (
         <button onClick={() => setPage("login")} style={primaryButton({ padding: "8px 18px" })}>Sign In</button>
@@ -248,7 +257,8 @@ function NavBar({ page, setPage, user, setUser }) {
 function HeroPage({ setPage }) {
   return (
     <div>
-      <section style={{ background: `linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.teal} 100%)`, padding: "72px 24px 52px", textAlign: "center" }}>
+      <section className="orpha-hero" style={{ background: `linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.teal} 100%)`, padding: "72px 24px 52px", textAlign: "center", overflow: "hidden" }}>
+        <LogoMark size={86} />
         <h1 style={{ fontFamily: "Georgia, serif", fontSize: 48, color: COLORS.white, margin: "0 0 16px", lineHeight: 1.1 }}>Discover new treatments from existing drugs</h1>
         <p style={{ maxWidth: 700, margin: "0 auto 28px", color: "rgba(255,255,255,0.78)", fontSize: 17, lineHeight: 1.7 }}>
           OrphaAI combines curated seed data, live public-database lookups, and an interpretable scoring engine for drug repurposing research.
@@ -271,7 +281,8 @@ function HeroPage({ setPage }) {
   );
 }
 
-function LoginPage({ setUser, setPage }) {
+function LoginPage({ setPage }) {
+  const { loginWithPassword, registerWithPassword, user } = useAuth();
   const [tab, setTab] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -279,6 +290,12 @@ function LoginPage({ setUser, setPage }) {
   const [institution, setInstitution] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // If user is already logged in (including after Google OAuth redirect),
+  // send them to the home page.
+  useEffect(() => {
+    if (user) setPage("home");
+  }, [setPage, user]);
 
   const validate = () => {
     if (!emailPattern.test(email.trim())) return "Enter a valid email address with @ and a domain.";
@@ -300,13 +317,17 @@ function LoginPage({ setUser, setPage }) {
     setError("");
     try {
       const [firstName, ...lastParts] = fullName.trim().split(/\s+/);
-      const path = tab === "login" ? "/auth/login" : "/auth/register";
-      const body = tab === "login"
-        ? { email: email.trim(), password }
-        : { email: email.trim(), password, firstName, lastName: lastParts.join(" "), institution };
-      const data = await api(path, { method: "POST", body: JSON.stringify(body) });
-      saveSession(data);
-      setUser(data.user);
+      if (tab === "login") {
+        await loginWithPassword({ email: email.trim(), password });
+      } else {
+        await registerWithPassword({
+          email: email.trim(),
+          password,
+          firstName,
+          lastName: lastParts.join(" "),
+          institution,
+        });
+      }
       setPage("home");
     } catch (err) {
       setError(err.message);
@@ -319,7 +340,8 @@ function LoginPage({ setUser, setPage }) {
     <div style={{ minHeight: "calc(100vh - 64px)", display: "grid", placeItems: "center", background: COLORS.gray50, padding: 24 }}>
       <Panel style={{ width: "100%", maxWidth: 430 }}>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 28, fontWeight: 800, color: COLORS.teal }}>OrphaAI</div>
+          <LogoMark size={64} />
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 28, fontWeight: 800, color: COLORS.teal, marginTop: 6 }}>OrphaAI</div>
           <div style={{ color: COLORS.gray600, marginTop: 4 }}>Research Platform Access</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
@@ -340,11 +362,38 @@ function LoginPage({ setUser, setPage }) {
         <label style={{ fontSize: 13, color: COLORS.gray600 }}>Email</label>
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle({ width: "100%", margin: "6px 0 14px" })} />
         <label style={{ fontSize: 13, color: COLORS.gray600 }}>Password</label>
-        <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="StrongPass1!" onKeyDown={(e) => e.key === "Enter" && submit()} style={inputStyle({ width: "100%", margin: "6px 0 10px" })} />
-        {tab === "register" && <div style={{ fontSize: 12, color: COLORS.gray600, marginBottom: 12 }}>Use 8+ characters with uppercase, lowercase, number, and special character.</div>}
-        {error && <div style={{ background: COLORS.amberBg, color: COLORS.amber, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 12 }}>{error}</div>}
-        <button onClick={submit} disabled={loading} style={primaryButton({ width: "100%", opacity: loading ? 0.6 : 1 })}>{loading ? "Please wait..." : tab === "login" ? "Sign In" : "Create Account"}</button>
-        <div style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: COLORS.gray600 }}>Demo: demo@orphaai.com / Demo1234</div>
+        <input
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          type="password"
+          placeholder="StrongPass1!"
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          style={inputStyle({ width: "100%", margin: "6px 0 10px" })}
+        />
+        {tab === "register" && (
+          <div style={{ fontSize: 12, color: COLORS.gray600, marginBottom: 12 }}>
+            Use 8+ characters with uppercase, lowercase, number, and special character.
+          </div>
+        )}
+        {error && (
+          <div style={{ background: COLORS.amberBg, color: COLORS.amber, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 12 }}>
+            {error}
+          </div>
+        )}
+        <button onClick={submit} disabled={loading} style={primaryButton({ width: "100%", opacity: loading ? 0.6 : 1 })}>
+          {loading ? "Please wait..." : tab === "login" ? "Sign In" : "Create Account"}
+        </button>
+        {/* Divider */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0", color: COLORS.gray600, fontSize: 12 }}>
+          <span style={{ height: 1, background: COLORS.gray100, flex: 1 }} />
+          <span>or</span>
+          <span style={{ height: 1, background: COLORS.gray100, flex: 1 }} />
+        </div>
+        {/* Google OAuth button — triggers Supabase redirect flow */}
+        <GoogleSignInButton disabled={loading} onError={setError} />
+        <div style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: COLORS.gray600 }}>
+          Demo: demo@orphaai.com / Demo1234
+        </div>
       </Panel>
     </div>
   );
@@ -378,7 +427,7 @@ function DrugLibrary({ user, setPage, setSearchContext }) {
         try {
           const ext = await api(`/external/drug/${encodeURIComponent(q.trim())}`);
           setExternal(ext);
-        } catch (err) {
+        } catch {
           setMessage("No local record or live public-database match found.");
         }
       }
@@ -401,12 +450,16 @@ function DrugLibrary({ user, setPage, setSearchContext }) {
     }
   };
 
-  useEffect(() => { if (user) load(); }, [user]);
+  useEffect(() => {
+    if (!user) return undefined;
+    const handle = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(handle);
+  }, [user]);
 
   if (!user) return <AuthGate user={user} setPage={setPage} />;
 
   return (
-    <main style={{ maxWidth: 1080, margin: "0 auto", padding: "42px 24px" }}>
+    <PageShell maxWidth={1080}>
       <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: 0 }}>Drug Library</h1>
       <LibrarySearch value={query} onChange={setQuery} placeholder="Search Metformin, Sildenafil, Imatinib, aspirin..." onSubmit={() => load(query)} />
       {loading && <p style={{ color: COLORS.gray600 }}>Searching...</p>}
@@ -433,7 +486,7 @@ function DrugLibrary({ user, setPage, setSearchContext }) {
           <PubChemInfo drug={pubchemModal.drug} data={pubchemModal.pubchem} />
         </Modal>
       )}
-    </main>
+    </PageShell>
   );
 }
 
@@ -522,7 +575,7 @@ function DiseaseLibrary({ user, setPage, setSearchContext }) {
         try {
           const ext = await api(`/external/disease/${encodeURIComponent(q.trim())}`);
           setExternal(ext);
-        } catch (err) {
+        } catch {
           setMessage("No local record or live public-database match found.");
         }
       }
@@ -545,12 +598,16 @@ function DiseaseLibrary({ user, setPage, setSearchContext }) {
     }
   };
 
-  useEffect(() => { if (user) load(); }, [user]);
+  useEffect(() => {
+    if (!user) return undefined;
+    const handle = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(handle);
+  }, [user]);
 
   if (!user) return <AuthGate user={user} setPage={setPage} />;
 
   return (
-    <main style={{ maxWidth: 1080, margin: "0 auto", padding: "42px 24px" }}>
+    <PageShell maxWidth={1080}>
       <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: 0 }}>Disease Library</h1>
       <LibrarySearch value={query} onChange={setQuery} placeholder="Search Alzheimer's, ALS, cancer, hypertension..." onSubmit={() => load(query)} />
       {loading && <p style={{ color: COLORS.gray600 }}>Searching...</p>}
@@ -578,7 +635,7 @@ function DiseaseLibrary({ user, setPage, setSearchContext }) {
           <KeggInfo disease={keggModal.disease} data={keggModal.kegg} />
         </Modal>
       )}
-    </main>
+    </PageShell>
   );
 }
 
@@ -653,7 +710,7 @@ function DrugDetail({ user, item, setPage }) {
   if (!drug) return null;
 
   return (
-    <main style={{ maxWidth: 980, margin: "0 auto", padding: "42px 24px" }}>
+    <PageShell maxWidth={980}>
       <button onClick={() => setPage("drugs")} style={secondaryButton({ marginBottom: 18 })}>Back to Drug Library</button>
       {message && <p style={{ color: COLORS.amber }}>{message}</p>}
       <Panel>
@@ -676,7 +733,7 @@ function DrugDetail({ user, item, setPage }) {
         <h3 style={{ color: COLORS.navy }}>Pathways</h3>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{(drug.pathways || []).map((p) => <Badge key={p.id} tone="purple">{p.name}</Badge>)}</div>
       </Panel>
-    </main>
+    </PageShell>
   );
 }
 
@@ -704,7 +761,7 @@ function DiseaseDetail({ user, item, setPage }) {
   if (!disease) return null;
 
   return (
-    <main style={{ maxWidth: 980, margin: "0 auto", padding: "42px 24px" }}>
+    <PageShell maxWidth={980}>
       <button onClick={() => setPage("diseases")} style={secondaryButton({ marginBottom: 18 })}>Back to Disease Library</button>
       {message && <p style={{ color: COLORS.amber }}>{message}</p>}
       <Panel>
@@ -724,7 +781,7 @@ function DiseaseDetail({ user, item, setPage }) {
         <h3 style={{ marginTop: 0, color: COLORS.navy }}>Stored Predictions</h3>
         {predictions.length === 0 ? <p style={{ color: COLORS.gray600 }}>No predictions stored yet. Run the predictor for this disease.</p> : predictions.slice(0, 8).map((p) => <PredictionRow key={p.id} pred={p} />)}
       </Panel>
-    </main>
+    </PageShell>
   );
 }
 
@@ -744,6 +801,7 @@ function PredictPage({ user, setPage }) {
   const [meta, setMeta] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState("");
 
   const runPrediction = async () => {
     if (!disease.trim()) return;
@@ -766,14 +824,15 @@ function PredictPage({ user, setPage }) {
     }
   };
 
-  const downloadReport = () => {
+  const downloadReport = async () => {
     const diseaseName = meta?.disease?.name || disease;
+    setDownloadStatus("Preparing report...");
     const lines = [
       `OrphaAI Drug Repurposing Report`,
       `Disease: ${diseaseName}`,
       `Generated: ${new Date().toLocaleString()}`,
       "",
-      "Methodology: Ensemble score using molecular similarity, gene/target network overlap, pathway overlap, and deterministic GNN proxy.",
+      "Methodology: Ensemble ranking using molecular similarity, gene/target network overlap, pathway overlap, and deterministic GNN proxy.",
       "",
       "Currently Used / Standard Drugs:",
       ...(currentTreatments.length ? currentTreatments.flatMap((item, index) => [
@@ -782,20 +841,26 @@ function PredictPage({ user, setPage }) {
       "",
       "Top Candidate Drugs:",
       ...results.flatMap((pred, index) => [
-        `${index + 1}. ${pred.drug?.name || "Unknown drug"} - Confidence ${Math.round(pred.confidencePct ?? 0)}% - Evidence ${pred.evidenceLevel || "low"}`,
+        `${index + 1}. ${pred.drug?.name || "Unknown drug"} - Evidence ${pred.evidenceLevel || "low"}`,
         `   Molecular weight: ${pred.drug?.molecularWeight || "N/A"}; Drug class: ${pred.drug?.drugClass || "N/A"}`,
         `   Rationale: ${pred.rationale || "N/A"}`,
         "",
       ]),
     ];
     const pdf = makePdf(lines);
-    downloadFile(`orphaai_${diseaseName.replace(/[^A-Za-z0-9]+/g, "_")}_report.pdf`, pdf, "application/pdf");
+    try {
+      const reportPrefix = `orphaai_${diseaseName.replace(/[^A-Za-z0-9]+/g, "_")}_report`;
+      const location = await downloadPdfReport(uniqueReportFilename(reportPrefix), pdf);
+      setDownloadStatus(`Success: PDF report saved to ${location}`);
+    } catch (err) {
+      setDownloadStatus(`Error: ${err.message || "Report download failed."}`);
+    }
   };
 
   if (!user) return <AuthGate user={user} setPage={setPage} />;
 
   return (
-    <main style={{ maxWidth: 980, margin: "0 auto", padding: "42px 24px" }}>
+    <PageShell maxWidth={980}>
       <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: 0 }}>Potential Drug Repurposing Predictor</h1>
       <Panel>
         <label style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray600 }}>Target Disease</label>
@@ -814,6 +879,7 @@ function PredictPage({ user, setPage }) {
             <h2 style={{ color: COLORS.navy, margin: 0 }}>Results for {meta?.disease?.name || disease}</h2>
             <button onClick={downloadReport} style={secondaryButton({ color: COLORS.teal, borderColor: COLORS.teal })}>Download PDF Report</button>
           </div>
+          {downloadStatus && <div style={{ color: downloadStatus.startsWith("Error:") ? COLORS.amber : COLORS.gray600, fontSize: 13, marginBottom: 12, overflowWrap: "anywhere" }}>{downloadStatus}</div>}
           <Panel style={{ marginBottom: 16 }}>
             <h3 style={{ color: COLORS.navy, marginTop: 0 }}>Currently Used Drugs</h3>
             {currentTreatments.length === 0 ? (
@@ -828,7 +894,7 @@ function PredictPage({ user, setPage }) {
           {results.length === 0 ? <p style={{ color: COLORS.gray600 }}>No repurposing candidates passed the score threshold.</p> : results.map((pred) => <PredictionRow key={pred.id || `${pred.drug?.id}-${pred.rank}`} pred={pred} />)}
         </section>
       )}
-    </main>
+    </PageShell>
   );
 }
 
@@ -854,8 +920,8 @@ function PredictionRow({ pred }) {
   const sourceLabel = pred.source === "chembl-api" ? "ChEMBL API" : pred.source === "open-targets-api" ? "Open Targets API" : "Local fallback";
   return (
     <Panel style={{ marginBottom: 12 }}>
-      <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-        <div style={{ width: 58, height: 58, borderRadius: 8, background: COLORS.tealBg, display: "grid", placeItems: "center", color: COLORS.teal, fontWeight: 900 }}>{Math.round(pred.confidencePct ?? (pred.scores?.ensemble || 0) * 100)}%</div>
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start", minWidth: 0 }}>
+        <div style={{ width: 58, height: 58, borderRadius: 8, background: COLORS.tealBg, display: "grid", placeItems: "center", color: COLORS.teal, fontWeight: 900, flex: "0 0 58px" }}>Rx</div>
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <h3 style={{ margin: 0, color: COLORS.navy }}>{drug.name}</h3>
@@ -868,10 +934,6 @@ function PredictionRow({ pred }) {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {pred.targetName && <Badge tone="navy">Target {pred.targetName}</Badge>}
             {pred.actionType && <Badge>Predicted Interaction Mode: {pred.actionType}</Badge>}
-            {pred.algorithmicConfidence && <Badge tone="teal">{pred.algorithmicConfidence}</Badge>}
-            {!pred.algorithmicConfidence && <Badge>Similarity {Math.round((pred.scores?.similarity || 0) * 100)}%</Badge>}
-            {!pred.algorithmicConfidence && <Badge tone="navy">Network {Math.round((pred.scores?.network || 0) * 100)}%</Badge>}
-            {!pred.algorithmicConfidence && <Badge tone="purple">GNN {Math.round((pred.scores?.gnn || 0) * 100)}%</Badge>}
             {drug.molecularWeight && <Badge tone="amber">MW {drug.molecularWeight}</Badge>}
           </div>
           {pred.mechanismOfAction && <div style={{ color: COLORS.gray600, marginTop: 10, fontSize: 13, lineHeight: 1.45 }}><b>Mechanism:</b> {pred.mechanismOfAction}</div>}
@@ -886,11 +948,10 @@ function InteractionNetworkPage({ user, setPage }) {
   const [drugId, setDrugId] = useState("");
   const [network, setNetwork] = useState(null);
   const [message, setMessage] = useState("");
-  const [minConfidence, setMinConfidence] = useState(40);
   const [layoutMode, setLayoutMode] = useState("radial");
   const [selectedTarget, setSelectedTarget] = useState(null);
   const [tooltip, setTooltip] = useState(null);
-  const networkRef = useMemo(() => ({ current: null }), []);
+  const networkRef = useRef(null);
 
   useEffect(() => {
     async function loadDrugs() {
@@ -921,10 +982,8 @@ function InteractionNetworkPage({ user, setPage }) {
   }, [drugId, user]);
 
   const layout = useMemo(() => buildDrugNetworkLayout(network, layoutMode), [network, layoutMode]);
-  const visibleTargets = layout.targets.filter((node) => node.confidence >= minConfidence);
+  const visibleTargets = layout.targets;
   const visibleIds = new Set(["drug", ...visibleTargets.map((node) => node.id)]);
-  const visibleEdges = layout.edges.filter((edge) => visibleIds.has(edge.target.id));
-  const averageConfidence = layout.targets.length ? Math.round(layout.targets.reduce((sum, node) => sum + node.confidence, 0) / layout.targets.length) : 0;
   const selectedDrug = drugs.find((drug) => String(drug.id) === String(drugId));
 
   const moveTooltip = (event, node) => {
@@ -942,33 +1001,28 @@ function InteractionNetworkPage({ user, setPage }) {
   if (!user) return <AuthGate user={user} setPage={setPage} />;
 
   return (
-    <main style={{ maxWidth: 1200, margin: "0 auto", padding: "42px 24px" }}>
-      <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: 0 }}>Drug-Target Interaction Network</h1>
-      <Panel>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-          <div>
-            <select value={drugId} onChange={(e) => setDrugId(e.target.value)} style={inputStyle({ minWidth: 240 })}>
+    <PageShell maxWidth={1200}>
+      <h1 className="network-title" style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: "0 0 16px", lineHeight: 1.12 }}>Drug-Target Interaction Network</h1>
+      <Panel style={{ overflow: "hidden" }}>
+        <div className="network-controls" style={{ display: "flex", justifyContent: "space-between", alignItems: "stretch", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+          <div style={{ flex: "1 1 280px", minWidth: 0 }}>
+            <select value={drugId} onChange={(e) => setDrugId(e.target.value)} style={inputStyle({ width: "100%", minHeight: 46 })}>
               {drugs.map((drug) => <option key={drug.id} value={drug.id}>{drug.name}</option>)}
             </select>
             <div style={{ color: COLORS.gray600, fontSize: 13, marginTop: 8 }}>{network?.drug?.name || "Drug"} - {layout.primaryCount} primary targets - {layout.secondaryCount} secondary</div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="network-mode-controls" style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: "1 1 300px", justifyContent: "flex-end" }}>
             {["radial", "force", "hierarchical"].map((mode) => (
-              <button key={mode} onClick={() => setLayoutMode(mode)} style={layoutMode === mode ? primaryButton({ padding: "8px 12px" }) : secondaryButton({ padding: "8px 12px" })}>
+              <button key={mode} onClick={() => setLayoutMode(mode)} style={layoutMode === mode ? primaryButton({ padding: "10px 12px", flex: "1 1 96px" }) : secondaryButton({ padding: "10px 12px", flex: "1 1 96px" })}>
                 {mode === "force" ? "Force-directed" : mode[0].toUpperCase() + mode.slice(1)}
               </button>
             ))}
           </div>
         </div>
         {message && <p style={{ color: COLORS.amber }}>{message}</p>}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", marginBottom: 12 }}>
-          <label style={{ color: COLORS.gray800, fontSize: 14, fontWeight: 700 }}>Min confidence: {minConfidence}%</label>
-          <input type="range" min="0" max="100" step="1" value={minConfidence} onChange={(e) => setMinConfidence(Number(e.target.value))} style={{ accentColor: COLORS.teal, width: 260, maxWidth: "100%" }} />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 260px", gap: 16, alignItems: "stretch" }}>
-          <div ref={(node) => { networkRef.current = node; }} style={{ position: "relative", background: "#F7F8FB", border: `1px solid ${COLORS.gray100}`, borderRadius: 8, minHeight: 420, display: "grid", placeItems: "center", overflow: "hidden" }}>
-            {visibleTargets.length === 0 && <div style={{ position: "absolute", zIndex: 2, color: COLORS.gray600, background: COLORS.white, border: `1px solid ${COLORS.gray100}`, borderRadius: 8, padding: "10px 14px" }}>No targets above this confidence threshold</div>}
-            <svg viewBox="0 0 760 420" style={{ width: "100%", maxWidth: 820 }}>
+        <div className="network-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(240px, 280px)", gap: 16, alignItems: "stretch", minWidth: 0 }}>
+          <div ref={(node) => { networkRef.current = node; }} style={{ position: "relative", background: "#F7F8FB", border: `1px solid ${COLORS.gray100}`, borderRadius: 8, minHeight: 420, display: "grid", placeItems: "center", overflow: "hidden", minWidth: 0 }}>
+            <svg viewBox="0 0 760 420" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", maxWidth: 820, height: "auto", display: "block" }}>
               <defs>
                 <filter id="softGlow"><feGaussianBlur stdDeviation="6" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
               </defs>
@@ -1000,17 +1054,17 @@ function InteractionNetworkPage({ user, setPage }) {
             </svg>
             {tooltip && <NetworkTooltip tooltip={tooltip} />}
           </div>
-          <NetworkSidePanel drug={network?.drug || selectedDrug} layout={layout} averageConfidence={averageConfidence} selectedTarget={selectedTarget} drugs={drugs} />
+          <NetworkSidePanel drug={network?.drug || selectedDrug} layout={layout} selectedTarget={selectedTarget} drugs={drugs} />
         </div>
         <NetworkLegend />
       </Panel>
-    </main>
+    </PageShell>
   );
 }
 
 function buildDrugNetworkLayout(network, mode = "radial") {
   const drug = network?.drug;
-  const center = { id: "drug", label: drug?.name || "Drug", x: mode === "hierarchical" ? 380 : 360, y: mode === "hierarchical" ? 72 : 210, r: 38, type: "drug", interactionType: "primary drug", confidence: 100, evidenceSource: "Local database", ki: null };
+  const center = { id: "drug", label: drug?.name || "Drug", x: mode === "hierarchical" ? 380 : 360, y: mode === "hierarchical" ? 72 : 210, r: 38, type: "drug", interactionType: "primary drug", evidenceSource: "Local database", ki: null };
   const edgeByTarget = new Map((network?.edges || []).map((edge) => [edge.target, edge]));
   const targets = (network?.nodes || []).filter((n) => n.type === "protein").slice(0, 18).map((target, index) => {
     const edge = edgeByTarget.get(target.id) || {};
@@ -1042,19 +1096,17 @@ function interactionStyle(type = "unknown") {
 function fallbackTargetMetadata(target, edge, index) {
   const interactionTypes = ["inhibitor", "activator", "allosteric", "unknown"];
   const fallbackKi = ["2.4 nM", "28 nM", "86 nM", "320 nM", "~1 µM", null];
-  const confidence = Math.round((edge.confidence ?? target.confidence ?? edge.weight * 100 ?? target.score * 100 ?? 70) || 70);
   const isPrimary = edge.isPrimary ?? target.isPrimary ?? index < 2;
   const importance = isPrimary ? "primary" : index < 8 ? "secondary" : "tertiary";
   return {
     interactionType: (edge.interactionType || target.interactionType || interactionTypes[index % interactionTypes.length]).toLowerCase(),
-    confidence: Math.max(0, Math.min(100, confidence)),
     ki: edge.ki ?? target.ki ?? fallbackKi[index % fallbackKi.length],
     evidenceSource: edge.evidenceSource || target.evidenceSource || (index % 3 === 0 ? "ChEMBL" : index % 3 === 1 ? "DrugBank" : "STITCH"),
     isPrimary,
     importance,
     r: isPrimary ? 24 : index < 8 ? 17 : 13,
     pathway: edge.pathway || target.pathway || (index < 2 ? "Prostaglandin pathway" : index % 5 === 0 ? "Signaling pathway" : null),
-    diseaseLinkCount: edge.diseaseLinkCount || target.diseaseLinkCount || Math.max(1, Math.round(confidence / 28)),
+    diseaseLinkCount: edge.diseaseLinkCount || target.diseaseLinkCount || Math.max(1, index + 1),
   };
 }
 
@@ -1131,7 +1183,6 @@ function NetworkTooltip({ tooltip }) {
       <div style={{ color: COLORS.navy, fontSize: 15, fontWeight: 900, marginBottom: 8 }}>{node.label}</div>
       <DetailRow label="Interaction" value={node.type === "drug" ? "Primary drug" : interactionStyle(node.interactionType).label} color={style.stroke} />
       <DetailRow label="Binding affinity" value={node.ki || "N/A"} />
-      <DetailRow label="Confidence" value={`${node.confidence ?? 100}%`} />
       <DetailRow label="Evidence" value={node.evidenceSource || "N/A"} />
     </div>
   );
@@ -1141,7 +1192,7 @@ function DetailRow({ label, value, color }) {
   return <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, lineHeight: 1.7 }}><span style={{ color: COLORS.gray600 }}>{label}</span><strong style={{ color: color || COLORS.gray800, textAlign: "right" }}>{value}</strong></div>;
 }
 
-function NetworkSidePanel({ drug, layout, averageConfidence, selectedTarget, drugs }) {
+function NetworkSidePanel({ drug, layout, selectedTarget, drugs }) {
   const name = drug?.name || "Drug";
   const status = drug?.status || "Approved";
   const drugClass = drug?.drugClass || drug?.drug_class || "Therapeutic";
@@ -1160,7 +1211,6 @@ function NetworkSidePanel({ drug, layout, averageConfidence, selectedTarget, dru
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
           <Stat label="Primary" value={layout.primaryCount} />
           <Stat label="Secondary" value={layout.secondaryCount} />
-          <Stat label="Avg conf." value={`${averageConfidence}%`} />
           <Stat label="Disease links" value={layout.diseaseLinkCount} />
         </div>
       </Panel>
@@ -1180,7 +1230,6 @@ function NetworkSidePanel({ drug, layout, averageConfidence, selectedTarget, dru
             </div>
             <div style={{ marginTop: 10 }}>
               <DetailRow label="Binding affinity" value={selectedTarget.ki || "N/A"} />
-              <DetailRow label="Confidence" value={`${selectedTarget.confidence}%`} />
               <DetailRow label="Evidence" value={selectedTarget.evidenceSource} />
               <DetailRow label="Disease links" value={selectedTarget.diseaseLinkCount} />
             </div>
@@ -1221,120 +1270,25 @@ function NetworkLegend() {
   );
 }
 
-function Legend({ color, label }) {
-  return <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />{label}</span>;
-}
-
-const ORPHA_WELCOME = "Hi, I'm Orpha — your drug repurposing research companion. Tell me about a disease, target, or mechanism and let's find candidates together.";
-const SUMMARY_REQUEST = "Summarize the most promising drug repurposing candidates we've discussed this session as a brief research memo.";
-
 function OrphaAvatar({ size = 42 }) {
-  const stroke = Math.max(0.65, size / 42);
   return (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(145deg, #DDFBFC 0%, #69DCD7 100%)", display: "grid", placeItems: "center", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.72)", flex: `0 0 ${size}px`, overflow: "hidden" }}>
-      <svg width={size} height={size} viewBox="0 0 42 42" aria-hidden="true">
-        <path d="M11 34c1.8-5.2 5.2-7.4 10-7.4s8.2 2.2 10 7.4" fill="#EAF8FF" stroke="#9EC7D6" strokeWidth={1.1 * stroke} />
-        <path d="M14.5 15.2c.7-5.5 3.2-8.3 6.5-8.3s5.8 2.8 6.5 8.3v8.2c0 4-2.7 7-6.5 7s-6.5-3-6.5-7v-8.2Z" fill="#DFF4FF" stroke="#7EA9BD" strokeWidth={1 * stroke} />
-        <path d="M15.6 11.6c2.2-3.2 8.6-3.2 10.8 0l-1.4 3.1H17l-1.4-3.1Z" fill="#F7FCFF" />
-        <path d="M12.8 16.1h2.1v8.6h-2.1c-1 0-1.8-.9-1.8-2v-4.6c0-1.1.8-2 1.8-2Z" fill="#587D99" />
-        <path d="M29.2 16.1h-2.1v8.6h2.1c1 0 1.8-.9 1.8-2v-4.6c0-1.1-.8-2-1.8-2Z" fill="#587D99" />
-        <path d="M14.6 16.2c.8 5.8 3.5 8.6 6.4 8.6s5.6-2.8 6.4-8.6" fill="none" stroke="#B7D8E6" strokeWidth={0.75 * stroke} />
-        <path d="M17.1 18.6c1.1-.9 2.4-.9 3.4 0M21.6 18.6c1.1-.9 2.4-.9 3.4 0" stroke="#12344D" strokeWidth={0.85 * stroke} strokeLinecap="round" fill="none" />
-        <circle cx="18.6" cy="20.2" r="1.45" fill="#2C79B7" />
-        <circle cx="23.4" cy="20.2" r="1.45" fill="#2C79B7" />
-        <circle cx="19.1" cy="19.7" r="0.45" fill="#FFFFFF" />
-        <circle cx="23.9" cy="19.7" r="0.45" fill="#FFFFFF" />
-        <path d="M20.8 21.2l-.7 2h1.8M18.7 25c1.6 1.1 3 1.1 4.6 0" stroke="#3A5968" strokeWidth={0.85 * stroke} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-        <rect x="17.5" y="30" width="7" height="5.5" rx="2" fill="#14334A" />
-        <circle cx="21" cy="36" r="3.2" fill="#DFF4FF" stroke="#0FB8B2" strokeWidth={1.2 * stroke} />
-        <path d="M21 34.4v3.2M19.4 36h3.2" stroke="#0FB8B2" strokeWidth={1.1 * stroke} strokeLinecap="round" />
-      </svg>
+    <div style={{ width: size, height: size, borderRadius: "50%", background: COLORS.white, display: "grid", placeItems: "center", boxShadow: `inset 0 0 0 1px ${COLORS.tealBg}`, flex: `0 0 ${size}px`, overflow: "hidden" }}>
+      <img src={ORPHAAI_LOGO_SRC} alt={ORPHAAI_LOGO_ALT} style={{ width: size, height: size, objectFit: "contain" }} />
     </div>
   );
 }
 
-function ChatbotPage() {
-  const [messages, setMessages] = useState([{ role: "assistant", text: ORPHA_WELCOME }]);
-  const [input, setInput] = useState("");
-  const [assistantResponseCount, setAssistantResponseCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-
-  const addMilestoneIfNeeded = (items, nextCount) => {
-    if (nextCount === 5 || nextCount === 10 || (nextCount > 10 && nextCount % 10 === 0)) {
-      return [...items, { role: "milestone", count: nextCount }];
-    }
-    return items;
-  };
-
-  const chatHistory = (items) =>
-    items
-      .filter((msg) => msg.role === "user" || msg.role === "assistant")
-      .map((msg) => ({ role: msg.role, content: msg.text }));
-
-  const sendPreparedMessage = async (current) => {
-    if (!current.trim() || loading) return;
-    const history = chatHistory(messages);
-    setMessages((prev) => [...prev, { role: "user", text: current }]);
-    setInput("");
-    setLoading(true);
-    try {
-      const data = await api("/chat/message", {
-        method: "POST",
-        body: JSON.stringify({
-          message: current,
-          history,
-        }),
-      });
-      const reply = data.content || data.data?.content || data.reply || "No response received.";
-      const nextCount = assistantResponseCount + 1;
-      setAssistantResponseCount(nextCount);
-      // Milestone cards are inserted into the existing message stream after selected assistant responses.
-      setMessages((prev) => addMilestoneIfNeeded([...prev, { role: "assistant", text: reply }], nextCount));
-    } catch (err) {
-      setMessages((prev) => [...prev, { role: "assistant", text: err.message }]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const sendMessage = async () => {
-    sendPreparedMessage(input);
-  };
-
+function ChatbotPage({ onOpenChatbot }) {
   return (
-    <main style={{ maxWidth: 900, margin: "0 auto", padding: "42px 24px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <OrphaAvatar size={52} />
-          <div>
-            <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: 0 }}>Orpha</h1>
-          </div>
-        </div>
-      </div>
-      <Panel style={{ minHeight: 480, display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, overflowY: "auto", marginBottom: 16 }}>
-          {messages.map((msg, i) => {
-            if (msg.role === "milestone") {
-              return (
-                <div key={`milestone-${msg.count}-${i}`} style={{ border: `1px solid ${COLORS.tealBg}`, background: COLORS.gray50, borderRadius: 8, padding: 14, margin: "12px auto", maxWidth: 560 }}>
-                  <div style={{ color: COLORS.navy, fontWeight: 800 }}>You've explored {msg.count} ideas this session — want a summary of the top candidates so far?</div>
-                  <button onClick={() => sendPreparedMessage(SUMMARY_REQUEST)} style={secondaryButton({ marginTop: 10, padding: "8px 12px" })}>Generate summary</button>
-                </div>
-              );
-            }
-            const isUser = msg.role === "user";
-            return (
-              <div key={`${msg.role}-${i}`} style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", gap: 9, marginBottom: 10 }}>
-                {!isUser && <OrphaAvatar size={32} />}
-                <div style={{ maxWidth: "76%", padding: "11px 14px", borderRadius: 8, background: isUser ? COLORS.teal : COLORS.gray50, color: isUser ? COLORS.white : COLORS.gray800, lineHeight: 1.55 }}>{msg.text}</div>
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendMessage()} placeholder="Ask about a disease, target, mechanism, or candidate..." style={inputStyle({ flex: 1 })} />
-          <button onClick={sendMessage} disabled={loading} style={primaryButton({ opacity: loading ? 0.65 : 1 })}>{loading ? "Thinking..." : "Send"}</button>
-        </div>
+    <main style={{ maxWidth: 860, margin: "0 auto", padding: "42px 24px" }}>
+      <Panel style={{ textAlign: "center", padding: "44px 28px" }}>
+        <OrphaAvatar size={72} />
+        <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: "18px 0 10px" }}>OrphaAI Assistant</h1>
+        <p style={{ maxWidth: 620, margin: "0 auto 24px", color: COLORS.gray600, lineHeight: 1.7 }}>
+          Chat with the published OrphaAI Tars agent for drug repurposing questions, candidate exploration, target reasoning, and platform guidance.
+        </p>
+        <button onClick={onOpenChatbot} style={primaryButton({ fontSize: 16, padding: "13px 22px" })}>Open OrphaAI Assistant</button>
+        <p style={{ marginTop: 16, color: COLORS.gray600, fontSize: 13 }}>The assistant opens inside OrphaAI as an embedded chat panel.</p>
       </Panel>
     </main>
   );
@@ -1351,41 +1305,40 @@ function AdminPage({ user }) {
 }
 
 export default function OrphaAI() {
+  const { user, initializing, logout } = useAuth();
   const [page, setPage] = useState("home");
-  const [user, setUser] = useState(null);
   const [searchContext, setSearchContext] = useState(null);
+  const [chatbotOpen, setChatbotOpen] = useState(false);
 
   useEffect(() => {
-    async function restore() {
-      if (!token()) return;
-      try {
-        const data = await api("/auth/me");
-        setUser(data.user);
-      } catch {
-        clearSession();
-      }
-    }
-    restore();
-  }, []);
+    if (page === "login" && user) setPage("home");
+  }, [page, user]);
+
+  const protect = (children) => (
+    <ProtectedRoute loading={initializing} setPage={setPage} user={user}>
+      {children}
+    </ProtectedRoute>
+  );
 
   return (
     <div style={{ fontFamily: "Segoe UI, system-ui, sans-serif", background: "#FAFAF8", minHeight: "100vh" }}>
-      <NavBar page={page} setPage={setPage} user={user} setUser={setUser} />
+      <NavBar page={page} setPage={setPage} user={user} logout={logout} />
       {page === "home" && <HeroPage setPage={setPage} />}
-      {page === "predict" && <PredictPage user={user} setPage={setPage} />}
-      {page === "network" && <InteractionNetworkPage user={user} setPage={setPage} />}
-      {page === "chatbot" && <ChatbotPage />}
-      {page === "drugs" && <DrugLibrary user={user} setPage={setPage} setSearchContext={setSearchContext} />}
-      {page === "diseases" && <DiseaseLibrary user={user} setPage={setPage} setSearchContext={setSearchContext} />}
-      {page === "drugDetail" && <DrugDetail user={user} item={searchContext} setPage={setPage} />}
-      {page === "diseaseDetail" && <DiseaseDetail user={user} item={searchContext} setPage={setPage} />}
-      {page === "login" && <LoginPage setUser={setUser} setPage={setPage} />}
-      {page === "admin" && <AdminPage user={user} />}
+      {page === "predict" && protect(<PredictPage user={user} setPage={setPage} />)}
+      {page === "network" && protect(<InteractionNetworkPage user={user} setPage={setPage} />)}
+      {page === "chatbot" && protect(<ChatbotPage onOpenChatbot={() => setChatbotOpen(true)} />)}
+      {page === "drugs" && protect(<DrugLibrary user={user} setPage={setPage} setSearchContext={setSearchContext} />)}
+      {page === "diseases" && protect(<DiseaseLibrary user={user} setPage={setPage} setSearchContext={setSearchContext} />)}
+      {page === "drugDetail" && protect(<DrugDetail user={user} item={searchContext} setPage={setPage} />)}
+      {page === "diseaseDetail" && protect(<DiseaseDetail user={user} item={searchContext} setPage={setPage} />)}
+      {page === "login" && <LoginPage setPage={setPage} />}
+      {page === "admin" && protect(<AdminPage user={user} />)}
       <footer style={{ background: COLORS.navy, color: "rgba(255,255,255,0.7)", textAlign: "center", padding: "26px 24px", fontSize: 13, marginTop: 40 }}>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: COLORS.white, marginBottom: 6 }}>OrphaAI</div>
         <div>Drug repurposing research platform - public database aware</div>
         <div>For research use only. Do not use the Repurposing Predictor to make any medical treatment decisions.</div>
       </footer>
+      <OrphaAIChatbot isOpen={chatbotOpen} onToggle={() => setChatbotOpen((open) => !open)} onClose={() => setChatbotOpen(false)} />
     </div>
   );
 }

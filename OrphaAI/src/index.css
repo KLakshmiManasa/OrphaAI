@@ -1,7 +1,7 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
+  --text: #5f5e5a;
+  --text-h: #042c53;
+  --bg: #fafaf8;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
   --accent: #aa3bff;
@@ -16,8 +16,8 @@
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
+  letter-spacing: 0;
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -30,40 +30,30 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+* {
+  box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  background: var(--bg);
+  -webkit-tap-highlight-color: transparent;
 }
 
 #root {
-  width: 1126px;
+  width: 100%;
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
-  border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 h1,
@@ -75,7 +65,7 @@ h2 {
 
 h1 {
   font-size: 56px;
-  letter-spacing: -1.68px;
+  letter-spacing: 0;
   margin: 32px 0;
   @media (max-width: 1024px) {
     font-size: 36px;
@@ -85,7 +75,7 @@ h1 {
 h2 {
   font-size: 24px;
   line-height: 118%;
-  letter-spacing: -0.24px;
+  letter-spacing: 0;
   margin: 0 0 8px;
   @media (max-width: 1024px) {
     font-size: 20px;
@@ -93,6 +83,115 @@ h2 {
 }
 p {
   margin: 0;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+input,
+select,
+textarea,
+main {
+  max-width: 100%;
+}
+
+@media (max-width: 600px) {
+  h1 {
+    font-size: 30px !important;
+    line-height: 1.15 !important;
+    overflow-wrap: anywhere;
+  }
+
+  h2 {
+    font-size: 22px !important;
+    line-height: 1.2 !important;
+  }
+
+  h3 {
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .orpha-page {
+    padding: 24px 14px !important;
+  }
+
+  .orpha-nav {
+    padding: 10px 12px !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .orpha-nav > button,
+  .orpha-nav > div {
+    width: 100%;
+    justify-content: center !important;
+  }
+
+  .orpha-nav-links {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .orpha-nav-links button {
+    width: 100%;
+    padding: 9px 6px !important;
+    font-size: 13px;
+    white-space: normal;
+  }
+
+  .orpha-hero {
+    padding: 34px 14px 30px !important;
+  }
+
+  .orpha-hero h1 {
+    font-size: 32px !important;
+  }
+
+  .network-title {
+    font-size: 28px !important;
+    max-width: 100%;
+  }
+
+  .network-controls,
+  .network-mode-controls {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100%;
+    justify-content: stretch !important;
+  }
+
+  .network-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .network-grid > div:first-child {
+    min-height: 280px !important;
+  }
+
+  .orpha-markdown {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .orpha-markdown p {
+    overflow-wrap: anywhere;
+  }
 }
 
 code,
