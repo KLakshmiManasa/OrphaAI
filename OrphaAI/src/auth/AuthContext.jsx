@@ -299,11 +299,24 @@ export function AuthProvider({ children }) {
   const loginWithGoogleCredential = useCallback(
     async (credential) => {
       setError("");
-      const res = await fetch(`${API_BASE}/auth/google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential }),
-      });
+      let res;
+      try {
+        res = await fetch(`${API_BASE}/auth/google`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ credential }),
+        });
+      } catch {
+        try {
+          res = await fetch(`${FALLBACK_API_BASE}/auth/google`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ credential }),
+          });
+        } catch {
+          throw new Error("Unable to connect to OrphaAI servers. Please check your network connection.");
+        }
+      }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const msg = data.error || `Google authentication failed (${res.status})`;

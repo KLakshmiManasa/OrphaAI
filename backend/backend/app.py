@@ -1256,6 +1256,93 @@ def auth_login():
     ))
 
 
+def decode_google_id_token(token: str) -> dict:
+    try:
+        parts = token.split(".")
+        if len(parts) < 2:
+            return {}
+        payload_b64 = parts[1]
+        rem = len(payload_b64) % 4
+        if rem > 0:
+            payload_b64 += "=" * (4 - rem)
+        decoded = base64.urlsafe_b64decode(payload_b64).decode("utf-8")
+        return json.loads(decoded)
+    except Exception:
+        return {}
+
+
+@app.post(f"{BASE}/auth/google")
+def auth_google():
+    d = request.get_json(silent=True) or {}
+    credential = d.get("credential") or ""
+    if not credential:
+        return err("Google credential required", 400)
+
+    claims = decode_google_id_token(credential)
+    email = claims.get("email", "").lower().strip()
+    if not email:
+        return err("Invalid Google token payload", 400)
+
+    first_name = claims.get("given_name") or (claims.get("name", "Google").split()[0] if claims.get("name") else "Google")
+    last_name = claims.get("family_name") or ""
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        user = User(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            institution="Google OAuth User",
+            role="researcher",
+        )
+        user.set_password(str(uuid.uuid4()))
+        db.session.add(user)
+
+    user.last_login = datetime.now(timezone.utc)
+    db.session.commit()
+
+    return ok(dict(
+        message="Google login successful",
+        user=user.to_dict(),
+        **make_tokens(user),
+    ))
+
+
+@app.post(f"{BASE}/auth/google-supabase")
+def auth_google_supabase():
+    d = request.get_json(silent=True) or {}
+    email = d.get("email", "").lower().strip()
+    if not email:
+        return err("Email required", 400)
+
+    full_name = d.get("full_name", "").strip()
+    parts = full_name.split(None, 1)
+    first_name = parts[0] if parts else "Google"
+    last_name = parts[1] if len(parts) > 1 else "User"
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        user = User(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            institution="Google OAuth User",
+            role="researcher",
+        )
+        user.set_password(str(uuid.uuid4()))
+        db.session.add(user)
+
+    user.last_login = datetime.now(timezone.utc)
+    db.session.commit()
+
+    return ok(dict(
+        message="Google login successful",
+        user=user.to_dict(),
+        **make_tokens(user),
+    ))
+
+
+
 @app.post(f"{BASE}/auth/refresh")
 @jwt_required(refresh=True)
 def auth_refresh():
