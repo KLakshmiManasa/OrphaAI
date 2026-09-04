@@ -35,11 +35,27 @@ function token() {
   return localStorage.getItem("orphaai_access_token") || "";
 }
 
+const FALLBACK_API_BASE = "https://orphaai-backend-nebu.onrender.com/api/v1";
+
 async function api(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   if (token()) headers.Authorization = `Bearer ${token()}`;
 
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    if (API_BASE !== FALLBACK_API_BASE) {
+      try {
+        response = await fetch(`${FALLBACK_API_BASE}${path}`, { ...options, headers });
+      } catch {
+        throw new Error("Unable to connect to OrphaAI servers. Please check your network connection.");
+      }
+    } else {
+      throw new Error("Unable to connect to OrphaAI servers. Please check your network connection.");
+    }
+  }
+
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload.error || `Request failed (${response.status})`);

@@ -16,9 +16,35 @@ const API_BASE =
   import.meta.env.VITE_API_BASE ||
   "http://localhost:5000/api/v1";
 
+const FALLBACK_API_BASE = "https://orphaai-backend-nebu.onrender.com/api/v1";
+
 const ACCESS_TOKEN_KEY  = "orphaai_access_token";
 const REFRESH_TOKEN_KEY = "orphaai_refresh_token";
 const OAUTH_CALLBACK_PATH = "/auth/callback";
+
+function loadGisScript() {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined") return reject(new Error("No window context"));
+    if (window.google?.accounts?.oauth2 || window.google?.accounts?.id) {
+      return resolve(window.google);
+    }
+    const existing = document.getElementById("google-gsi-script");
+    if (existing) {
+      if (window.google?.accounts) return resolve(window.google);
+      existing.addEventListener("load", () => resolve(window.google));
+      existing.addEventListener("error", (e) => reject(e));
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = "google-gsi-script";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(window.google);
+    script.onerror = () => reject(new Error("Failed to load Google Identity Services script."));
+    document.head.appendChild(script);
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Flask session helpers (used by BOTH email/password AND Google OAuth flows)
@@ -86,7 +112,21 @@ async function authRequest(path, options = {}) {
   const token = storedAccessToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    if (API_BASE !== FALLBACK_API_BASE) {
+      try {
+        response = await fetch(`${FALLBACK_API_BASE}${path}`, { ...options, headers });
+      } catch {
+        throw new Error("Unable to connect to OrphaAI servers. Please check your network connection.");
+      }
+    } else {
+      throw new Error("Unable to connect to OrphaAI servers. Please check your network connection.");
+    }
+  }
+
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload.error || `Request failed (${response.status})`);
@@ -341,15 +381,17 @@ export function AuthProvider({ children }) {
   // -------------------------------------------------------------------------
   // Google OAuth via direct GIS Popup (No redirect_uri required)
   // -------------------------------------------------------------------------
-  const loginWithGooglePopup = useCallback(() => {
+  const loginWithGooglePopup = useCallback(async () => {
+    setError("");
+    await loadGisScript().catch(() => {});
+
     return new Promise((resolve, reject) => {
-      setError("");
       const googleClientId =
         import.meta.env.VITE_GOOGLE_CLIENT_ID ||
         "645276021991-2npbgjkdq4ih7oumiqb632tcfc411eds.apps.googleusercontent.com";
 
       if (typeof window === "undefined" || !window.google?.accounts?.oauth2) {
-        const err = new Error("Google Identity Services library is loading. Please try again in a moment.");
+        const err = new Error("Google Identity Services script is loading. Please try again in a moment.");
         setError(err.message);
         return reject(err);
       }
@@ -371,16 +413,28 @@ export function AuthProvider({ children }) {
                 });
                 const info = await userInfoRes.json();
 
-                const res = await fetch(`${API_BASE}/auth/google-supabase`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    email: info.email,
-                    full_name: info.name || `${info.given_name || ""} ${info.family_name || ""}`.trim(),
-                    avatar_url: info.picture || "",
-                    supabase_uid: info.sub,
-                  }),
+                const reqBody = JSON.stringify({
+                  email: info.email,
+                  full_name: info.name || `${info.given_name || ""} ${info.family_name || ""}`.trim(),
+                  avatar_url: info.picture || "",
+                  supabase_uid: info.sub,
                 });
+
+                let res;
+                try {
+                  res = await fetch(`${API_BASE}/auth/google-supabase`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: reqBody,
+                  });
+                } catch {
+                  res = await fetch(`${FALLBACK_API_BASE}/auth/google-supabase`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: reqBody,
+                  });
+                }
+
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) {
                   throw new Error(data.error || "Backend authentication failed.");
