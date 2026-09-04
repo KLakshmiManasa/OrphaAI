@@ -31,6 +31,34 @@ export default function GoogleSignInButton({
   const handleClick = async () => {
     if (disabled) return;
     try {
+      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "645276021991-2npbgjkdq4ih7oumiqb632tcfc411eds.apps.googleusercontent.com";
+
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: async (response) => {
+            if (response?.credential) {
+              try {
+                await loginWithGoogleCredential(response.credential);
+              } catch (err) {
+                onError?.(err?.message || "Google sign-in failed.");
+              }
+            } else {
+              onError?.("No credential returned from Google.");
+            }
+          },
+        });
+
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            loginWithGoogleOAuth().catch((err) => {
+              onError?.(err?.message ?? "Google sign-in failed. Please try again.");
+            });
+          }
+        });
+        return;
+      }
+
       await loginWithGoogleOAuth();
     } catch (err) {
       onError?.(err?.message ?? "Google sign-in failed. Please try again.");
