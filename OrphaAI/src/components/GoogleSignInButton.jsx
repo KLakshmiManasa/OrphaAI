@@ -31,34 +31,6 @@ export default function GoogleSignInButton({
   const handleClick = async () => {
     if (disabled) return;
     try {
-      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-      if (googleClientId && window.google?.accounts?.id) {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: async (response) => {
-            if (response?.credential) {
-              try {
-                await loginWithGoogleCredential(response.credential);
-              } catch (err) {
-                onError?.(err?.message || "Google sign-in failed.");
-              }
-            } else {
-              onError?.("No credential returned from Google.");
-            }
-          },
-        });
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            // Prompt was dismissed/not displayed — run OAuth flow
-            loginWithGoogleOAuth().catch((err) => {
-              onError?.(err?.message ?? "Google sign-in failed. Please try again.");
-            });
-          }
-        });
-        return;
-      }
-
       await loginWithGoogleOAuth();
     } catch (err) {
       onError?.(err?.message ?? "Google sign-in failed. Please try again.");

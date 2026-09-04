@@ -48,6 +48,14 @@ function isOAuthRedirect() {
   return hasHashTokens || hasCode || hasError;
 }
 
+function getGoogleIdTokenFromHash() {
+  if (typeof window === "undefined") return "";
+  const hash = window.location.hash || "";
+  if (!hash.includes("id_token=")) return "";
+  const match = hash.match(/id_token=([^&]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 function oauthRedirectTo() {
   const configured = import.meta.env.VITE_SUPABASE_REDIRECT_URL;
   if (configured) return configured;
@@ -223,6 +231,22 @@ export function AuthProvider({ children }) {
     setInitializing(true);
     setError("");
     try {
+      // Step 0: Check for direct Google ID token in URL hash
+      const directGoogleToken = getGoogleIdTokenFromHash();
+      if (directGoogleToken) {
+        try {
+          const loggedInUser = await loginWithGoogleCredential(directGoogleToken);
+          if (typeof window !== "undefined") {
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+          setUser(loggedInUser);
+          return;
+        } catch (err) {
+          console.error("Direct Google token authentication failed:", err);
+          setError(err.message || "Google authentication failed.");
+        }
+      }
+
       const isRedirect = isOAuthRedirect();
 
       if (isRedirect) {
@@ -242,22 +266,26 @@ export function AuthProvider({ children }) {
         }
       }
 
-      // Step 2: check for a Supabase session (Google OAuth user)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        console.warn("[OrphaAI] getSession error:", sessionError.message);
+      // Step 2: check for a Supabase session (Google OAuth user) if Supabase URL is active
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (supabaseUrl && !supabaseUrl.includes("rueqocfsletjyyvfzfdg")) {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.warn("[OrphaAI] getSession error:", sessionError.message);
+        }
+        if (session?.user) {
+          await doExchange(session.user);
+          clearOAuthCallbackUrl();
+          return;
+        }
       }
-      if (session?.user) {
-        await doExchange(session.user);
-        clearOAuthCallbackUrl();
-      } else {
-        setUser(null);
-        if (isRedirect) clearOAuthCallbackUrl();
-      }
+
+      setUser(null);
+      if (isRedirect) clearOAuthCallbackUrl();
     } finally {
       setInitializing(false);
     }
-  }, [doExchange]);
+  }, [doExchange, loginWithGoogleCredential]);
 
   // -------------------------------------------------------------------------
   // Supabase auth state listener
@@ -356,83 +384,20 @@ export function AuthProvider({ children }) {
     setError("");
     exchangingRef.current = false; // reset guard for fresh attempt
 
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "645276021991-2npbgjkdq4ih7oumiqb632tcfc411eds.apps.googleusercontent.com";
 
-    // Try Direct Google Identity Services (GIS) if available
-    if (googleClientId && window.google?.accounts?.id) {
-      return new Promise((resolve, reject) => {
-        try {
-          window.google.accounts.id.initialize({
-            client_id: googleClientId,
-            callback: async (response) => {
-              try {
-                if (response.credential) {
-                  const loggedInUser = await loginWithGoogleCredential(response.credential);
-                  resolve(loggedInUser);
-                } else {
-                  const err = new Error("No credential returned from Google.");
-                  setError(err.message);
-                  reject(err);
-                }
-              } catch (err) {
-                reject(err);
-              }
-            },
-          });
+    // Direct Google OAuth 2.0 endpoint (Zero dependency on dead Supabase URLs)
+    const redirectUri = window.location.origin;
+    const nonce = Math.random().toString(36).substring(2);
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${encodeURIComponent(googleClientId)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&response_type=id_token` +
+      `&scope=${encodeURIComponent("openid email profile")}` +
+      `&nonce=${nonce}`;
 
-          window.google.accounts.id.prompt(async (notification) => {
-            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-              // If GIS prompt was blocked/dismissed, fall back to Supabase OAuth if available
-              try {
-                const { error: oauthError } = await supabase.auth.signInWithOAuth({
-                  provider: "google",
-                  options: {
-                    redirectTo: oauthRedirectTo(),
-                    queryParams: { access_type: "offline", prompt: "consent" },
-                  },
-                });
-                if (oauthError) {
-                  setError(oauthError.message);
-                  reject(oauthError);
-                }
-              } catch (err) {
-                const errorMsg = "Supabase OAuth service is unreachable (invalid Supabase domain or network issue). Please check your Supabase configuration.";
-                setError(errorMsg);
-                reject(new Error(errorMsg));
-              }
-            }
-          });
-        } catch (err) {
-          reject(err);
-        }
-      });
-    }
-
-    // Fallback: Supabase OAuth
-    try {
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: oauthRedirectTo(),
-          queryParams: {
-            access_type: "offline",
-            prompt:      "consent",
-          },
-        },
-      });
-
-      if (oauthError) {
-        setError(oauthError.message);
-        throw oauthError;
-      }
-    } catch (err) {
-      const errorMsg = err?.message?.includes("Failed to fetch") || err?.message?.includes("NetworkError") || !import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes("rueqocfsletjyyvfzfdg")
-        ? "Google OAuth service URL (Supabase) is unreachable or misconfigured. Please check VITE_SUPABASE_URL in .env."
-        : (err?.message || "Google sign-in failed.");
-      setError(errorMsg);
-      throw new Error(errorMsg);
-    }
-  }, [loginWithGoogleCredential]);
+    window.location.href = googleAuthUrl;
+  }, []);
 
   // -------------------------------------------------------------------------
   // Context value
