@@ -1258,28 +1258,55 @@ def auth_login():
 
 def decode_google_id_token(token: str) -> dict:
     try:
+        if not token or not isinstance(token, str):
+            return {}
         parts = token.split(".")
         if len(parts) < 2:
             return {}
         payload_b64 = parts[1]
+        payload_b64 = payload_b64.replace("-", "+").replace("_", "/")
         rem = len(payload_b64) % 4
         if rem > 0:
             payload_b64 += "=" * (4 - rem)
-        decoded = base64.urlsafe_b64decode(payload_b64).decode("utf-8")
-        return json.loads(decoded)
-    except Exception:
+        decoded_bytes = base64.b64decode(payload_b64)
+        return json.loads(decoded_bytes.decode("utf-8", errors="replace"))
+    except Exception as e:
+        print(f"[OrphaAI] Google ID token decode error: {e}", flush=True)
         return {}
 
 
 @app.post(f"{BASE}/auth/google")
 def auth_google():
     d = request.get_json(silent=True) or {}
-    credential = d.get("credential") or ""
+    credential = d.get("credential") or d.get("id_token") or d.get("token") or d.get("access_token") or ""
+    if isinstance(credential, dict):
+        credential = credential.get("credential") or credential.get("id_token") or credential.get("access_token") or ""
     if not credential:
         return err("Google credential required", 400)
 
     claims = decode_google_id_token(credential)
     email = claims.get("email", "").lower().strip()
+
+    # Fallback 1: Query Google tokeninfo API for ID tokens
+    if not email:
+        try:
+            resp = http.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}", timeout=5)
+            if resp.ok:
+                claims = resp.json()
+                email = claims.get("email", "").lower().strip()
+        except Exception:
+            pass
+
+    # Fallback 2: Query Google userinfo API for Access tokens
+    if not email:
+        try:
+            resp = http.get("https://www.googleapis.com/oauth2/v3/userinfo", headers={"Authorization": f"Bearer {credential}"}, timeout=5)
+            if resp.ok:
+                claims = resp.json()
+                email = claims.get("email", "").lower().strip()
+        except Exception:
+            pass
+
     if not email:
         return err("Invalid Google token payload", 400)
 
