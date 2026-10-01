@@ -10,22 +10,29 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://orphaai-backend-nebu.
 const FALLBACK_API_BASE = "http://localhost:5000/api/v1";
 
 const COLORS = {
+  navy: "#06182B",
+  navyMid: "#0C2B4B",
+  navyBg: "#F0F4F8",
   teal: "#0F6E56",
-  tealLight: "#22A7B8",
-  tealBg: "#E1F5EE",
-  coral: "#D85A30",
-  navy: "#042C53",
-  navyMid: "#185FA5",
-  navyBg: "#E6F1FB",
-  amber: "#BA7517",
-  amberBg: "#FAEEDA",
-  purple: "#5B5CE2",
-  purpleBg: "#EEEDFE",
-  gray50: "#F7F7F4",
-  gray100: "#DADDD8",
-  gray300: "#A4AAA3",
-  gray600: "#5F5E5A",
-  gray800: "#333532",
+  tealBright: "#0D9488",
+  tealLight: "#14B8A6",
+  tealBg: "#F0FDF4",
+  tealTint: "#E6F7F3",
+  coral: "#E11D48",
+  coralBg: "#FFF1F2",
+  amber: "#D97706",
+  amberBg: "#FFFBEB",
+  purple: "#6366F1",
+  purpleBg: "#EEF2FF",
+  cyan: "#06B6D4",
+  cyanBg: "#ECFEFF",
+  gray50: "#F8FAFC",
+  gray100: "#E2E8F0",
+  gray200: "#CBD5E1",
+  gray300: "#94A3B8",
+  gray600: "#64748B",
+  gray800: "#1E293B",
+  gray900: "#0F172A",
   white: "#FFFFFF",
 };
 
@@ -116,41 +123,171 @@ function makePdf(lines) {
 
 function Badge({ children, tone = "teal" }) {
   const map = {
-    teal: [COLORS.tealBg, COLORS.teal],
-    navy: [COLORS.navyBg, COLORS.navyMid],
-    amber: [COLORS.amberBg, COLORS.amber],
-    purple: [COLORS.purpleBg, COLORS.purple],
+    teal: { bg: "#F0FDF4", color: "#0F6E56", border: "#BBF7D0" },
+    navy: { bg: "#F0F4F8", color: "#0C2B4B", border: "#CBD5E1" },
+    amber: { bg: "#FFFBEB", color: "#B45309", border: "#FDE68A" },
+    purple: { bg: "#EEF2FF", color: "#4F46E5", border: "#C7D2FE" },
+    cyan: { bg: "#ECFEFF", color: "#0891B2", border: "#A5F3FC" },
+    coral: { bg: "#FFF1F2", color: "#E11D48", border: "#FECDD3" },
   };
-  const [bg, color] = map[tone] || map.teal;
-  return <span style={{ background: bg, color, fontSize: 12, fontWeight: 700, padding: "4px 9px", borderRadius: 6 }}>{children}</span>;
+  const style = map[tone] || map.teal;
+  return (
+    <span
+      style={{
+        background: style.bg,
+        color: style.color,
+        border: `1px solid ${style.border}`,
+        fontSize: "11px",
+        fontWeight: 700,
+        letterSpacing: "0.02em",
+        padding: "3px 9px",
+        borderRadius: "20px",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "4px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </span>
+  );
 }
 
 function Panel({ children, style }) {
-  return <div style={{ background: COLORS.white, border: `1px solid ${COLORS.gray100}`, borderRadius: 8, padding: 24, boxSizing: "border-box", maxWidth: "100%", minWidth: 0, ...style }}>{children}</div>;
+  return (
+    <div
+      style={{
+        background: COLORS.white,
+        border: `1px solid ${COLORS.gray100}`,
+        borderRadius: "14px",
+        padding: "24px",
+        boxSizing: "border-box",
+        maxWidth: "100%",
+        minWidth: 0,
+        boxShadow: "0 4px 18px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -2px rgba(15, 23, 42, 0.03)",
+        transition: "box-shadow 0.2s ease, transform 0.2s ease",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 function LogoMark({ size = 36, showText = false, color = COLORS.teal }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-      <img src={ORPHAAI_LOGO_SRC} alt={ORPHAAI_LOGO_ALT} style={{ width: size, height: size, objectFit: "contain", flex: `0 0 ${size}px` }} />
-      {showText && <span style={{ fontFamily: "Georgia, serif", fontSize: Math.max(18, Math.round(size * 0.62)), fontWeight: 800, color, whiteSpace: "nowrap" }}>Orpha<span style={{ color: COLORS.gray800 }}>AI</span></span>}
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+      <img
+        src={ORPHAAI_LOGO_SRC}
+        alt={ORPHAAI_LOGO_ALT}
+        style={{
+          width: size,
+          height: size,
+          objectFit: "contain",
+          flex: `0 0 ${size}px`,
+          filter: "drop-shadow(0 2px 4px rgba(15, 110, 86, 0.18))",
+        }}
+      />
+      {showText && (
+        <span
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontSize: Math.max(18, Math.round(size * 0.62)),
+            fontWeight: 800,
+            letterSpacing: "-0.03em",
+            color,
+            whiteSpace: "nowrap",
+            display: "inline-flex",
+            alignItems: "center",
+          }}
+        >
+          Orpha<span style={{ color: COLORS.gray900 }}>AI</span>
+          <span
+            style={{
+              marginLeft: "6px",
+              fontSize: "10px",
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              background: "linear-gradient(135deg, #0F6E56, #0D9488)",
+              color: COLORS.white,
+              padding: "2px 6px",
+              borderRadius: "4px",
+            }}
+          >
+            BIOMED
+          </span>
+        </span>
+      )}
     </span>
   );
 }
 
 function PageShell({ children, maxWidth = 1080, style }) {
-  return <main className="orpha-page" style={{ maxWidth, width: "100%", margin: "0 auto", padding: "42px 24px", boxSizing: "border-box", overflowX: "hidden", ...style }}>{children}</main>;
+  return (
+    <main
+      className="orpha-page animate-fade-in"
+      style={{
+        maxWidth,
+        width: "100%",
+        margin: "0 auto",
+        padding: "36px 24px 60px",
+        boxSizing: "border-box",
+        overflowX: "hidden",
+        ...style,
+      }}
+    >
+      {children}
+    </main>
+  );
 }
 
 function Modal({ title, onClose, children }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(4,44,83,0.36)", zIndex: 50, display: "grid", placeItems: "center", padding: 20 }}>
-      <div style={{ background: COLORS.white, borderRadius: 8, border: `1px solid ${COLORS.gray100}`, width: "min(920px, 96vw)", maxHeight: "88vh", overflow: "auto", boxShadow: "0 18px 60px rgba(0,0,0,0.18)" }}>
-        <div style={{ position: "sticky", top: 0, background: COLORS.white, borderBottom: `1px solid ${COLORS.gray100}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <h2 style={{ margin: 0, color: COLORS.navy, fontSize: 20 }}>{title}</h2>
-          <button onClick={onClose} style={secondaryButton({ padding: "7px 11px" })}>Close</button>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(6, 24, 43, 0.55)",
+        backdropFilter: "blur(6px)",
+        zIndex: 50,
+        display: "grid",
+        placeItems: "center",
+        padding: 20,
+        animation: "fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+      }}
+    >
+      <div
+        style={{
+          background: COLORS.white,
+          borderRadius: 16,
+          border: `1px solid ${COLORS.gray100}`,
+          width: "min(920px, 96vw)",
+          maxHeight: "88vh",
+          overflow: "auto",
+          boxShadow: "0 24px 60px -12px rgba(6, 24, 43, 0.3)",
+        }}
+      >
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            background: COLORS.white,
+            borderBottom: `1px solid ${COLORS.gray100}`,
+            padding: "18px 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            zIndex: 10,
+          }}
+        >
+          <h2 style={{ margin: 0, color: COLORS.navy, fontSize: 19, fontWeight: 800 }}>{title}</h2>
+          <button onClick={onClose} style={secondaryButton({ padding: "7px 14px", fontSize: 13 })}>
+            Close
+          </button>
         </div>
-        <div style={{ padding: 20 }}>{children}</div>
+        <div style={{ padding: 24 }}>{children}</div>
       </div>
     </div>
   );
@@ -159,48 +296,86 @@ function Modal({ title, onClose, children }) {
 function AuthGate({ user, setPage }) {
   if (user) return null;
   return (
-    <Panel style={{ maxWidth: 620, margin: "48px auto", textAlign: "center" }}>
-      <h2 style={{ margin: "0 0 8px", color: COLORS.navy }}>Sign in required</h2>
-      <p style={{ margin: "0 0 20px", color: COLORS.gray600 }}>This module uses secured backend APIs and JWT authentication.</p>
-      <button onClick={() => setPage("login")} style={primaryButton()}>Sign In</button>
+    <Panel style={{ maxWidth: 540, margin: "64px auto", textAlign: "center", padding: "40px 32px" }}>
+      <div
+        style={{
+          width: 54,
+          height: 54,
+          borderRadius: 14,
+          background: COLORS.tealBg,
+          color: COLORS.teal,
+          display: "grid",
+          placeItems: "center",
+          margin: "0 auto 18px",
+        }}
+      >
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      </div>
+      <h2 style={{ margin: "0 0 8px", color: COLORS.navy, fontSize: 22, fontWeight: 800 }}>Authentication Required</h2>
+      <p style={{ margin: "0 0 24px", color: COLORS.gray600, fontSize: 14, lineHeight: 1.6 }}>
+        Access to this biomedical module requires an authorized user session. Please sign in to continue.
+      </p>
+      <button onClick={() => setPage("login")} style={primaryButton({ padding: "12px 28px", fontSize: 15 })}>
+        Sign In to Platform
+      </button>
     </Panel>
   );
 }
 
 function primaryButton(extra = {}) {
   return {
-    padding: "11px 18px",
+    padding: "11px 20px",
     border: "none",
-    borderRadius: 8,
-    background: COLORS.teal,
+    borderRadius: 10,
+    background: "linear-gradient(135deg, #0F6E56 0%, #0D9488 100%)",
     color: COLORS.white,
     fontWeight: 700,
+    fontSize: 14,
     cursor: "pointer",
+    boxShadow: "0 4px 14px rgba(15, 110, 86, 0.25)",
+    transition: "all 0.18s ease",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     ...extra,
   };
 }
 
 function secondaryButton(extra = {}) {
   return {
-    padding: "10px 16px",
-    border: `1px solid ${COLORS.gray100}`,
-    borderRadius: 8,
+    padding: "10px 18px",
+    border: `1px solid ${COLORS.gray200}`,
+    borderRadius: 10,
     background: COLORS.white,
     color: COLORS.navy,
     fontWeight: 700,
+    fontSize: 14,
     cursor: "pointer",
+    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
+    transition: "all 0.18s ease",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     ...extra,
   };
 }
 
 function inputStyle(extra = {}) {
   return {
-    padding: "11px 13px",
-    border: `1px solid ${COLORS.gray100}`,
-    borderRadius: 8,
+    padding: "11px 14px",
+    border: `1px solid ${COLORS.gray200}`,
+    borderRadius: 10,
     fontSize: 14,
+    color: COLORS.gray900,
+    background: COLORS.white,
     outline: "none",
     boxSizing: "border-box",
+    transition: "border-color 0.18s ease, box-shadow 0.18s ease",
     ...extra,
   };
 }
@@ -222,48 +397,133 @@ function NavBar({ page, setPage, user, logout }) {
   };
 
   return (
-    <nav className="orpha-nav" style={{ background: COLORS.white, borderBottom: `1px solid ${COLORS.gray100}`, padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 64, position: "sticky", top: 0, zIndex: 10, gap: 16, flexWrap: "wrap", boxSizing: "border-box" }}>
-      <button onClick={() => setPage("home")} style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "transparent", cursor: "pointer", padding: 0, minWidth: 0 }}>
+    <nav
+      className="orpha-nav"
+      style={{
+        background: "rgba(255, 255, 255, 0.92)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        borderBottom: `1px solid ${COLORS.gray100}`,
+        padding: "0 32px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        minHeight: 68,
+        position: "sticky",
+        top: 0,
+        zIndex: 40,
+        gap: 20,
+        boxSizing: "border-box",
+      }}
+    >
+      <button
+        onClick={() => setPage("home")}
+        style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "transparent", cursor: "pointer", padding: 0, minWidth: 0 }}
+      >
         <LogoMark size={34} showText />
       </button>
 
-      <div className="orpha-nav-links" style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center", minWidth: 0 }}>
-        {nav.map(([key, label]) => (
-          <button key={key} onClick={() => setPage(key)} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: page === key ? COLORS.tealBg : "transparent", color: page === key ? COLORS.teal : COLORS.gray600, fontWeight: page === key ? 700 : 500, cursor: "pointer" }}>
-            {label}
-          </button>
-        ))}
+      <div className="orpha-nav-links" style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", minWidth: 0 }}>
+        {nav.map(([key, label]) => {
+          const isActive = page === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setPage(key)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "none",
+                background: isActive ? COLORS.tealBg : "transparent",
+                color: isActive ? COLORS.teal : COLORS.gray600,
+                fontWeight: isActive ? 700 : 600,
+                fontSize: 14,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {user ? (
         <div style={{ position: "relative", minWidth: 0 }}>
-          <button onClick={() => setProfileOpen((open) => !open)} style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, border: `1px solid ${COLORS.gray100}`, background: COLORS.white, borderRadius: 8, padding: "5px 9px", cursor: "pointer" }} aria-expanded={profileOpen} aria-label="Open user profile menu">
+          <button
+            onClick={() => setProfileOpen((open) => !open)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              minWidth: 0,
+              border: `1px solid ${COLORS.gray200}`,
+              background: COLORS.white,
+              borderRadius: 10,
+              padding: "5px 12px 5px 6px",
+              cursor: "pointer",
+              boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
+            }}
+            aria-expanded={profileOpen}
+            aria-label="Open user profile menu"
+          >
             {user.avatarUrl ? (
-              <img src={user.avatarUrl} alt={userLabel(user)} referrerPolicy="no-referrer" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", flex: "0 0 34px" }} />
+              <img src={user.avatarUrl} alt={userLabel(user)} referrerPolicy="no-referrer" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flex: "0 0 32px" }} />
             ) : (
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: COLORS.teal, color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 800, flex: "0 0 34px" }}>{userLabel(user)[0]}</div>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #0F6E56, #0D9488)", color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 14, flex: "0 0 32px" }}>
+                {userLabel(user)[0]}
+              </div>
             )}
-            <span style={{ fontSize: 14, color: COLORS.gray800, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userLabel(user)}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray900, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {userLabel(user)}
+            </span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={COLORS.gray600} strokeWidth="2.5">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
           </button>
+
           {profileOpen && (
-            <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 276, maxWidth: "calc(100vw - 32px)", background: COLORS.white, border: `1px solid ${COLORS.gray100}`, borderRadius: 8, boxShadow: "0 18px 46px rgba(4,44,83,0.16)", padding: 14, zIndex: 20 }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+            <div
+              style={{
+                position: "absolute",
+                right: 0,
+                top: "calc(100% + 8px)",
+                width: 270,
+                maxWidth: "calc(100vw - 32px)",
+                background: COLORS.white,
+                border: `1px solid ${COLORS.gray100}`,
+                borderRadius: 14,
+                boxShadow: "0 16px 40px -8px rgba(6, 24, 43, 0.16)",
+                padding: 16,
+                zIndex: 50,
+                animation: "fadeIn 0.18s ease forwards",
+              }}
+            >
+              <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0, marginBottom: 12 }}>
                 {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={userLabel(user)} referrerPolicy="no-referrer" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flex: "0 0 44px" }} />
+                  <img src={user.avatarUrl} alt={userLabel(user)} referrerPolicy="no-referrer" style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover", flex: "0 0 42px" }} />
                 ) : (
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: COLORS.teal, color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 900, flex: "0 0 44px" }}>{userLabel(user)[0]}</div>
+                  <div style={{ width: 42, height: 42, borderRadius: "50%", background: "linear-gradient(135deg, #0F6E56, #0D9488)", color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 16, flex: "0 0 42px" }}>
+                    {userLabel(user)[0]}
+                  </div>
                 )}
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ color: COLORS.navy, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userLabel(user)}</div>
+                  <div style={{ color: COLORS.navy, fontWeight: 800, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userLabel(user)}</div>
                   <div style={{ color: COLORS.gray600, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</div>
                 </div>
               </div>
-              <button onClick={handleLogout} style={secondaryButton({ width: "100%", marginTop: 12 })}>Sign Out</button>
+              <div style={{ borderTop: `1px solid ${COLORS.gray100}`, paddingTop: 12 }}>
+                <button onClick={handleLogout} style={secondaryButton({ width: "100%", justifyContent: "center", color: COLORS.coral, borderColor: "#FECDD3", background: "#FFF1F2" })}>
+                  Sign Out
+                </button>
+              </div>
             </div>
           )}
         </div>
       ) : (
-        <button onClick={() => setPage("login")} style={primaryButton({ padding: "8px 18px" })}>Sign In</button>
+        <button onClick={() => setPage("login")} style={primaryButton({ padding: "9px 20px" })}>
+          Sign In
+        </button>
       )}
     </nav>
   );
@@ -271,26 +531,170 @@ function NavBar({ page, setPage, user, logout }) {
 
 function HeroPage({ setPage }) {
   return (
-    <div>
-      <section className="orpha-hero" style={{ background: `linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.teal} 100%)`, padding: "72px 24px 52px", textAlign: "center", overflow: "hidden" }}>
-        <LogoMark size={86} />
-        <h1 style={{ fontFamily: "Georgia, serif", fontSize: 48, color: COLORS.white, margin: "0 0 16px", lineHeight: 1.1 }}>Discover new treatments from existing drugs</h1>
-        <p style={{ maxWidth: 700, margin: "0 auto 28px", color: "rgba(255,255,255,0.78)", fontSize: 17, lineHeight: 1.7 }}>
-          OrphaAI combines curated seed data, live public-database lookups, and an interpretable scoring engine for drug repurposing research.
-        </p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
-          <button onClick={() => setPage("diseases")} style={primaryButton({ background: COLORS.white, color: COLORS.teal })}>Search Diseases</button>
-          <button onClick={() => setPage("drugs")} style={secondaryButton({ background: "transparent", color: COLORS.white, borderColor: "rgba(255,255,255,0.45)" })}>Search Drugs</button>
-          <button onClick={() => setPage("predict")} style={secondaryButton({ background: "transparent", color: COLORS.white, borderColor: "rgba(255,255,255,0.45)" })}>Run Prediction</button>
+    <div className="animate-fade-in">
+      <section
+        className="orpha-hero"
+        style={{
+          background: "linear-gradient(135deg, #06182B 0%, #0A2E46 50%, #0F6E56 100%)",
+          padding: "80px 24px 64px",
+          textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: "radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+            pointerEvents: "none",
+          }}
+        />
+        <div style={{ position: "relative", zIndex: 2, maxWidth: 840, margin: "0 auto" }}>
+          <div style={{ display: "inline-block", marginBottom: 20 }}>
+            <LogoMark size={76} />
+          </div>
+          <h1
+            style={{
+              fontSize: 48,
+              fontWeight: 800,
+              color: COLORS.white,
+              margin: "0 0 18px",
+              lineHeight: 1.15,
+              letterSpacing: "-0.03em",
+            }}
+          >
+            AI-Powered Drug Repurposing &amp; Disease Analysis
+          </h1>
+          <p
+            style={{
+              maxWidth: 680,
+              margin: "0 auto 34px",
+              color: "rgba(255,255,255,0.85)",
+              fontSize: 18,
+              lineHeight: 1.65,
+              fontWeight: 400,
+            }}
+          >
+            OrphaAI combines curated biomedical seed data, live public-database lookups, and an interpretable scoring engine for accelerated drug repurposing discovery.
+          </p>
+          <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
+            <button
+              onClick={() => setPage("predict")}
+              style={primaryButton({
+                background: COLORS.white,
+                color: COLORS.teal,
+                fontSize: 15,
+                padding: "13px 26px",
+                boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+              })}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              Run Prediction Engine
+            </button>
+            <button
+              onClick={() => setPage("diseases")}
+              style={secondaryButton({
+                background: "rgba(255,255,255,0.08)",
+                color: COLORS.white,
+                borderColor: "rgba(255,255,255,0.25)",
+                fontSize: 15,
+                padding: "13px 22px",
+                backdropFilter: "blur(4px)",
+              })}
+            >
+              Explore Disease Library
+            </button>
+            <button
+              onClick={() => setPage("drugs")}
+              style={secondaryButton({
+                background: "rgba(255,255,255,0.08)",
+                color: COLORS.white,
+                borderColor: "rgba(255,255,255,0.25)",
+                fontSize: 15,
+                padding: "13px 22px",
+                backdropFilter: "blur(4px)",
+              })}
+            >
+              Explore Drug Library
+            </button>
+          </div>
         </div>
       </section>
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", borderBottom: `1px solid ${COLORS.gray100}` }}>
-        {[["Secured", "JWT + bcrypt auth"], ["Live", "PubChem/ChEMBL/Open Targets fallback"], ["Explainable", "Similarity + network + GNN proxy"], ["Reports", "Downloadable prediction output"]].map(([value, label]) => (
-          <div key={value} style={{ padding: "24px", textAlign: "center", borderRight: `1px solid ${COLORS.gray100}` }}>
-            <div style={{ color: COLORS.teal, fontWeight: 900, fontSize: 24 }}>{value}</div>
-            <div style={{ color: COLORS.gray600, fontSize: 13, marginTop: 4 }}>{label}</div>
-          </div>
-        ))}
+
+      <section
+        style={{
+          maxWidth: 1140,
+          margin: "-28px auto 0",
+          padding: "0 24px",
+          position: "relative",
+          zIndex: 10,
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 16,
+          }}
+        >
+          {[
+            ["Secured Authentication", "JWT + bcrypt protected routes", "security"],
+            ["Live Database Fallback", "PubChem, ChEMBL & Open Targets", "database"],
+            ["Interpretable Machine Learning", "Similarity, network & GNN scoring", "cpu"],
+            ["Exportable PDF Reports", "Instant downloadable research summaries", "file-text"],
+          ].map(([title, desc, icon]) => (
+            <Panel key={title} style={{ padding: "20px 22px", borderRadius: 14 }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: COLORS.tealBg,
+                  color: COLORS.teal,
+                  display: "grid",
+                  placeItems: "center",
+                  marginBottom: 12,
+                }}
+              >
+                {icon === "security" && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                )}
+                {icon === "database" && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <ellipse cx="12" cy="5" rx="9" ry="3" />
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                  </svg>
+                )}
+                {icon === "cpu" && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                    <path d="M9 9h6v6H9z" />
+                    <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3" />
+                  </svg>
+                )}
+                {icon === "file-text" && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                )}
+              </div>
+              <div style={{ color: COLORS.navy, fontWeight: 800, fontSize: 16, marginBottom: 4 }}>{title}</div>
+              <div style={{ color: COLORS.gray600, fontSize: 13, lineHeight: 1.5 }}>{desc}</div>
+            </Panel>
+          ))}
+        </div>
       </section>
     </div>
   );
@@ -306,8 +710,6 @@ function LoginPage({ setPage }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // If user is already logged in (including after Google OAuth redirect),
-  // send them to the home page.
   useEffect(() => {
     if (user) setPage("home");
   }, [setPage, user]);
@@ -352,62 +754,120 @@ function LoginPage({ setPage }) {
   };
 
   return (
-    <div style={{ minHeight: "calc(100vh - 64px)", display: "grid", placeItems: "center", background: COLORS.gray50, padding: 24 }}>
-      <Panel style={{ width: "100%", maxWidth: 430 }}>
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <LogoMark size={64} />
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 28, fontWeight: 800, color: COLORS.teal, marginTop: 6 }}>OrphaAI</div>
-          <div style={{ color: COLORS.gray600, marginTop: 4 }}>Research Platform Access</div>
+    <div
+      style={{
+        minHeight: "calc(100vh - 68px)",
+        display: "grid",
+        placeItems: "center",
+        background: "radial-gradient(circle at 50% 30%, #F0F4F8 0%, #F8FAFC 100%)",
+        padding: "36px 20px",
+      }}
+    >
+      <Panel style={{ width: "100%", maxWidth: 440, padding: "36px 32px" }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <LogoMark size={58} />
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: 24, fontWeight: 800, color: COLORS.navy, marginTop: 12 }}>
+            OrphaAI Research Portal
+          </div>
+          <div style={{ color: COLORS.gray600, fontSize: 14, marginTop: 4 }}>Access secured biomedical platform</div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
-          {["login", "register"].map((value) => (
-            <button key={value} onClick={() => { setTab(value); setError(""); }} style={value === tab ? primaryButton() : secondaryButton()}>
-              {value === "login" ? "Sign In" : "Register"}
-            </button>
-          ))}
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 6,
+            marginBottom: 24,
+            background: COLORS.gray50,
+            padding: 4,
+            borderRadius: 12,
+            border: `1px solid ${COLORS.gray100}`,
+          }}
+        >
+          {["login", "register"].map((value) => {
+            const isActive = tab === value;
+            return (
+              <button
+                key={value}
+                onClick={() => {
+                  setTab(value);
+                  setError("");
+                }}
+                style={{
+                  padding: "9px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: isActive ? COLORS.white : "transparent",
+                  color: isActive ? COLORS.navy : COLORS.gray600,
+                  fontWeight: isActive ? 800 : 600,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  boxShadow: isActive ? "0 2px 6px rgba(15, 23, 42, 0.08)" : "none",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {value === "login" ? "Sign In" : "Register"}
+              </button>
+            );
+          })}
         </div>
+
         {tab === "register" && (
           <>
-            <label style={{ fontSize: 13, color: COLORS.gray600 }}>Full Name</label>
-            <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Dr. Jane Smith" style={inputStyle({ width: "100%", margin: "6px 0 14px" })} />
-            <label style={{ fontSize: 13, color: COLORS.gray600 }}>Institution</label>
-            <input value={institution} onChange={(e) => setInstitution(e.target.value)} placeholder="University or lab" style={inputStyle({ width: "100%", margin: "6px 0 14px" })} />
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray600, display: "block", marginBottom: 6 }}>Full Name</label>
+              <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Dr. Jane Smith" style={inputStyle({ width: "100%" })} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray600, display: "block", marginBottom: 6 }}>Institution / Organization</label>
+              <input value={institution} onChange={(e) => setInstitution(e.target.value)} placeholder="University or laboratory" style={inputStyle({ width: "100%" })} />
+            </div>
           </>
         )}
-        <label style={{ fontSize: 13, color: COLORS.gray600 }}>Email</label>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle({ width: "100%", margin: "6px 0 14px" })} />
-        <label style={{ fontSize: 13, color: COLORS.gray600 }}>Password</label>
-        <input
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          type="password"
-          placeholder="StrongPass1!"
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-          style={inputStyle({ width: "100%", margin: "6px 0 10px" })}
-        />
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray600, display: "block", marginBottom: 6 }}>Email Address</label>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="researcher@institution.edu" style={inputStyle({ width: "100%" })} />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray600, display: "block", marginBottom: 6 }}>Password</label>
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type="password"
+            placeholder="••••••••••••"
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            style={inputStyle({ width: "100%" })}
+          />
+        </div>
+
         {tab === "register" && (
-          <div style={{ fontSize: 12, color: COLORS.gray600, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: COLORS.gray600, marginBottom: 16, lineHeight: 1.45 }}>
             Use 8+ characters with uppercase, lowercase, number, and special character.
           </div>
         )}
+
         {error && (
-          <div style={{ background: COLORS.amberBg, color: COLORS.amber, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 12 }}>
+          <div style={{ background: COLORS.coralBg, color: COLORS.coral, border: "1px solid #FECDD3", borderRadius: 10, padding: "11px 14px", fontSize: 13, marginBottom: 16, lineHeight: 1.4 }}>
             {error}
           </div>
         )}
-        <button onClick={submit} disabled={loading} style={primaryButton({ width: "100%", opacity: loading ? 0.6 : 1 })}>
-          {loading ? "Please wait..." : tab === "login" ? "Sign In" : "Create Account"}
+
+        <button onClick={submit} disabled={loading} style={primaryButton({ width: "100%", opacity: loading ? 0.65 : 1, padding: "12px", fontSize: 15 })}>
+          {loading ? "Please wait..." : tab === "login" ? "Sign In" : "Create Researcher Account"}
         </button>
-        {/* Divider */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0", color: COLORS.gray600, fontSize: 12 }}>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "22px 0", color: COLORS.gray300, fontSize: 12 }}>
           <span style={{ height: 1, background: COLORS.gray100, flex: 1 }} />
-          <span>or</span>
+          <span style={{ color: COLORS.gray600, textTransform: "uppercase", letterSpacing: "0.05em", fontSize: 11, fontWeight: 700 }}>Or continue with</span>
           <span style={{ height: 1, background: COLORS.gray100, flex: 1 }} />
         </div>
-        {/* Google OAuth button — triggers Supabase redirect flow */}
+
         <GoogleSignInButton disabled={loading} onError={setError} />
-        <div style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: COLORS.gray600 }}>
-          Demo: demo@orphaai.com / Demo1234
+
+        <div style={{ textAlign: "center", marginTop: 18, padding: "10px", background: COLORS.gray50, borderRadius: 8, fontSize: 12, color: COLORS.gray600 }}>
+          <b>Demo Account:</b> demo@orphaai.com / Demo1234
         </div>
       </Panel>
     </div>
@@ -416,9 +876,31 @@ function LoginPage({ setPage }) {
 
 function LibrarySearch({ value, onChange, placeholder, onSubmit }) {
   return (
-    <div style={{ display: "flex", gap: 10, margin: "22px 0", flexWrap: "wrap" }}>
-      <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === "Enter" && onSubmit()} placeholder={placeholder} style={inputStyle({ flex: "1 1 260px" })} />
-      <button onClick={onSubmit} style={primaryButton()}>Search</button>
+    <div style={{ display: "flex", gap: 10, margin: "24px 0 28px", flexWrap: "wrap" }}>
+      <div style={{ flex: "1 1 280px", position: "relative" }}>
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+          placeholder={placeholder}
+          style={inputStyle({ width: "100%", paddingLeft: "42px" })}
+        />
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={COLORS.gray300}
+          strokeWidth="2.2"
+          style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+        >
+          <circle cx="11" cy="11" r="8" />
+          <path d="M21 21l-4.35-4.35" />
+        </svg>
+      </div>
+      <button onClick={onSubmit} style={primaryButton({ padding: "11px 24px" })}>
+        Search Library
+      </button>
     </div>
   );
 }
@@ -475,21 +957,36 @@ function DrugLibrary({ user, setPage, setSearchContext }) {
 
   return (
     <PageShell maxWidth={1080}>
-      <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: 0 }}>Drug Library</h1>
+      <div style={{ marginBottom: 8 }}>
+        <h1 style={{ fontSize: 32, color: COLORS.navy }}>Drug Library</h1>
+        <p style={{ color: COLORS.gray600, marginTop: 4 }}>Explore pharmaceutical candidates, molecular targets, and indications.</p>
+      </div>
       <LibrarySearch value={query} onChange={setQuery} placeholder="Search Metformin, Sildenafil, Imatinib, aspirin..." onSubmit={() => load(query)} />
-      {loading && <p style={{ color: COLORS.gray600 }}>Searching...</p>}
-      {message && <p style={{ color: COLORS.amber }}>{message}</p>}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
+      {loading && <p style={{ color: COLORS.gray600, fontSize: 14 }}>Searching database...</p>}
+      {message && <p style={{ color: COLORS.amber, fontSize: 14 }}>{message}</p>}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
         {drugs.map((drug) => (
-          <Panel key={drug.id} style={{ cursor: "pointer" }}>
+          <Panel
+            key={drug.id}
+            style={{
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
             <div onClick={() => openPubChem(drug)}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                <h3 style={{ margin: 0, color: COLORS.navy }}>{drug.name}</h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+                <h3 style={{ margin: 0, color: COLORS.navy, fontSize: 18, fontWeight: 800 }}>{drug.name}</h3>
                 <Badge tone={drug.status === "approved" ? "teal" : "amber"}>{drug.status}</Badge>
               </div>
-              <p style={{ color: COLORS.gray600, minHeight: 38 }}>{drug.indication || "No indication listed"}</p>
+              <p style={{ color: COLORS.gray600, fontSize: 13, minHeight: 38, lineHeight: 1.5, marginBottom: 14 }}>
+                {drug.indication || "No indication listed"}
+              </p>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {(drug.primaryTargets || []).slice(0, 4).map((target) => <Badge key={target.symbol} tone="navy">{target.symbol}</Badge>)}
+                {(drug.primaryTargets || []).slice(0, 4).map((target) => (
+                  <Badge key={target.symbol} tone="navy">{target.symbol}</Badge>
+                ))}
               </div>
             </div>
           </Panel>
@@ -497,7 +994,7 @@ function DrugLibrary({ user, setPage, setSearchContext }) {
       </div>
       {external && <ExternalDrugCard data={external} />}
       {pubchemModal && (
-        <Modal title={`${pubchemModal.drug.name} - PubChem`} onClose={() => setPubchemModal(null)}>
+        <Modal title={`${pubchemModal.drug.name} — PubChem Compound Data`} onClose={() => setPubchemModal(null)}>
           <PubChemInfo drug={pubchemModal.drug} data={pubchemModal.pubchem} />
         </Modal>
       )}
@@ -524,26 +1021,42 @@ function PubChemInfo({ drug, data }) {
     ["Monoisotopic Mass", data.monoisotopicMass],
   ];
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 220px) minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 220px) minmax(0, 1fr)", gap: 24, alignItems: "start" }}>
       <div>
-        {data.image2d && <img alt={`${drug.name} structure`} src={data.image2d} style={{ width: "100%", border: `1px solid ${COLORS.gray100}`, borderRadius: 8, background: COLORS.white }} />}
-        {data.sourceUrl && <a href={data.sourceUrl} target="_blank" rel="noreferrer" style={{ ...secondaryButton({ display: "block", textAlign: "center", marginTop: 10, textDecoration: "none" }) }}>Open PubChem</a>}
+        {data.image2d && (
+          <img
+            alt={`${drug.name} structure`}
+            src={data.image2d}
+            style={{ width: "100%", border: `1px solid ${COLORS.gray100}`, borderRadius: 12, background: COLORS.white, padding: 8 }}
+          />
+        )}
+        {data.sourceUrl && (
+          <a href={data.sourceUrl} target="_blank" rel="noreferrer" style={{ ...secondaryButton({ display: "block", textAlign: "center", marginTop: 12, textDecoration: "none" }) }}>
+            Open PubChem
+          </a>
+        )}
       </div>
       <div>
         {data.sourceStatus === "local-fallback" && (
-          <div style={{ background: COLORS.amberBg, color: COLORS.amber, borderRadius: 8, padding: 10, marginBottom: 12, lineHeight: 1.45 }}>
+          <div style={{ background: COLORS.amberBg, color: COLORS.amber, border: `1px solid #FDE68A`, borderRadius: 10, padding: 12, marginBottom: 14, fontSize: 13, lineHeight: 1.45 }}>
             PubChem live lookup is unavailable in this environment, so this popup is using local curated molecular data.
           </div>
         )}
-        {data.description && <p style={{ color: COLORS.gray800, lineHeight: 1.6, marginTop: 0 }}>{data.description}</p>}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
-          {rows.map(([label, value]) => <Info key={label} label={label} value={value} />)}
+        {data.description && <p style={{ color: COLORS.gray800, lineHeight: 1.6, marginTop: 0, fontSize: 14 }}>{data.description}</p>}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, marginTop: 14 }}>
+          {rows.map(([label, value]) => (
+            <Info key={label} label={label} value={value} />
+          ))}
         </div>
         {data.synonyms?.length > 0 && (
-          <>
-            <h3 style={{ color: COLORS.navy }}>Synonyms</h3>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{data.synonyms.map((s) => <Badge key={s} tone="navy">{s}</Badge>)}</div>
-          </>
+          <div style={{ marginTop: 16 }}>
+            <h4 style={{ color: COLORS.navy, fontSize: 14, marginBottom: 8 }}>Synonyms</h4>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {data.synonyms.map((s) => (
+                <Badge key={s} tone="navy">{s}</Badge>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -554,14 +1067,26 @@ function ExternalDrugCard({ data }) {
   const p = data.pubchem;
   const c = data.chembl;
   return (
-    <Panel style={{ marginTop: 18 }}>
-      <h3 style={{ margin: "0 0 12px", color: COLORS.navy }}>Live Public Database Match</h3>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(160px, 220px) 1fr", gap: 18 }}>
-        {p?.image2d ? <img alt={`${data.query} 2D structure`} src={p.image2d} style={{ width: "100%", border: `1px solid ${COLORS.gray100}`, borderRadius: 8 }} /> : <div />}
+    <Panel style={{ marginTop: 24 }}>
+      <h3 style={{ margin: "0 0 14px", color: COLORS.navy, fontSize: 18 }}>Live Public Database Match</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(160px, 200px) 1fr", gap: 20 }}>
+        {p?.image2d ? <img alt={`${data.query} 2D structure`} src={p.image2d} style={{ width: "100%", border: `1px solid ${COLORS.gray100}`, borderRadius: 10 }} /> : <div />}
         <div>
-          {p && <p style={{ marginTop: 0, color: COLORS.gray800 }}><b>PubChem CID:</b> {p.cid}<br /><b>Formula:</b> {p.molecularFormula}<br /><b>Weight:</b> {p.molecularWeight}<br /><b>IUPAC:</b> {p.iupacName}</p>}
-          {c && <p style={{ color: COLORS.gray800 }}><b>ChEMBL:</b> {c.chemblId}<br /><b>Max phase:</b> {c.maxPhase ?? "N/A"}</p>}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {p && (
+            <p style={{ marginTop: 0, color: COLORS.gray800, fontSize: 14, lineHeight: 1.6 }}>
+              <b>PubChem CID:</b> {p.cid}<br />
+              <b>Formula:</b> {p.molecularFormula}<br />
+              <b>Weight:</b> {p.molecularWeight}<br />
+              <b>IUPAC:</b> {p.iupacName}
+            </p>
+          )}
+          {c && (
+            <p style={{ color: COLORS.gray800, fontSize: 14 }}>
+              <b>ChEMBL:</b> {c.chemblId}<br />
+              <b>Max phase:</b> {c.maxPhase ?? "N/A"}
+            </p>
+          )}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
             {p?.sourceUrl && <a href={p.sourceUrl} target="_blank" rel="noreferrer" style={secondaryButton({ textDecoration: "none" })}>PubChem</a>}
             {c?.sourceUrl && <a href={c.sourceUrl} target="_blank" rel="noreferrer" style={secondaryButton({ textDecoration: "none" })}>ChEMBL</a>}
           </div>
@@ -623,18 +1148,23 @@ function DiseaseLibrary({ user, setPage, setSearchContext }) {
 
   return (
     <PageShell maxWidth={1080}>
-      <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: 0 }}>Disease Library</h1>
+      <div style={{ marginBottom: 8 }}>
+        <h1 style={{ fontSize: 32, color: COLORS.navy }}>Disease Library</h1>
+        <p style={{ color: COLORS.gray600, marginTop: 4 }}>Explore pathological indications, OMIM datasets, and target gene associations.</p>
+      </div>
       <LibrarySearch value={query} onChange={setQuery} placeholder="Search Alzheimer's, ALS, cancer, hypertension..." onSubmit={() => load(query)} />
-      {loading && <p style={{ color: COLORS.gray600 }}>Searching...</p>}
-      {message && <p style={{ color: COLORS.amber }}>{message}</p>}
+      {loading && <p style={{ color: COLORS.gray600, fontSize: 14 }}>Searching database...</p>}
+      {message && <p style={{ color: COLORS.amber, fontSize: 14 }}>{message}</p>}
       <div style={{ display: "grid", gap: 14 }}>
         {diseases.map((disease) => (
           <Panel key={disease.id} style={{ cursor: "pointer" }}>
             <div onClick={() => openKegg(disease)} style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-              <div style={{ minWidth: 58, height: 58, borderRadius: 8, background: COLORS.tealBg, display: "grid", placeItems: "center", color: COLORS.teal, fontWeight: 900 }}>{disease.associatedGenes?.length || 0}</div>
+              <div style={{ minWidth: 54, height: 54, borderRadius: 12, background: COLORS.tealBg, color: COLORS.teal, border: `1px solid ${COLORS.tealBorder}`, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 16 }}>
+                {disease.associatedGenes?.length || 0}
+              </div>
               <div style={{ flex: 1 }}>
-                <h3 style={{ margin: "0 0 5px", color: COLORS.navy }}>{disease.name}</h3>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <h3 style={{ margin: "0 0 6px", color: COLORS.navy, fontSize: 18, fontWeight: 800 }}>{disease.name}</h3>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <Badge tone="purple">{disease.diseaseType || "untyped"}</Badge>
                   {disease.isRare && <Badge tone="amber">rare</Badge>}
                   {disease.omimId && <Badge tone="navy">OMIM {disease.omimId}</Badge>}
@@ -646,7 +1176,7 @@ function DiseaseLibrary({ user, setPage, setSearchContext }) {
       </div>
       {external && <ExternalDiseaseCard data={external} />}
       {keggModal && (
-        <Modal title={`${keggModal.disease.name} - KEGG Pathways`} onClose={() => setKeggModal(null)}>
+        <Modal title={`${keggModal.disease.name} — KEGG Pathway Information`} onClose={() => setKeggModal(null)}>
           <KeggInfo disease={keggModal.disease} data={keggModal.kegg} />
         </Modal>
       )}
@@ -657,32 +1187,36 @@ function DiseaseLibrary({ user, setPage, setSearchContext }) {
 function KeggInfo({ disease, data }) {
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginBottom: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, marginBottom: 20 }}>
         <Info label="KEGG Entry" value={data.entry} />
         <Info label="Name" value={(data.names || [disease.name]).join("; ")} />
         <Info label="Category" value={data.category} />
         <Info label="Linked Drugs" value={data.drugs?.length || 0} />
       </div>
       {data.sourceStatus === "local-fallback" && (
-        <div style={{ background: COLORS.amberBg, color: COLORS.amber, borderRadius: 8, padding: 10, marginBottom: 14, lineHeight: 1.45 }}>
+        <div style={{ background: COLORS.amberBg, color: COLORS.amber, border: `1px solid #FDE68A`, borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 13, lineHeight: 1.45 }}>
           KEGG live lookup is unavailable or did not match this exact disease name, so this popup is using local pathway data.
         </div>
       )}
-      {data.description && <p style={{ color: COLORS.gray800, lineHeight: 1.6 }}>{data.description}</p>}
-      <h3 style={{ color: COLORS.navy }}>Disease Pathways From KEGG</h3>
+      {data.description && <p style={{ color: COLORS.gray800, lineHeight: 1.6, fontSize: 14 }}>{data.description}</p>}
+      <h3 style={{ color: COLORS.navy, marginTop: 18, marginBottom: 12 }}>Disease Pathways From KEGG</h3>
       {data.pathways?.length > 0 ? (
         <div style={{ display: "grid", gap: 10 }}>
           {data.pathways.map((p) => (
-            <a key={p.id} href={`https://www.genome.jp/entry/${p.id}`} target="_blank" rel="noreferrer" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", padding: 12, border: `1px solid ${COLORS.gray100}`, borderRadius: 8, textDecoration: "none", color: COLORS.gray800 }}>
-              <span>{p.name || p.id}</span>
+            <a key={p.id} href={`https://www.genome.jp/entry/${p.id}`} target="_blank" rel="noreferrer" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", padding: "12px 16px", border: `1px solid ${COLORS.gray100}`, borderRadius: 10, textDecoration: "none", color: COLORS.gray800, background: COLORS.white }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{p.name || p.id}</span>
               <Badge tone="purple">{p.id}</Badge>
             </a>
           ))}
         </div>
       ) : (
-        <p style={{ color: COLORS.gray600 }}>KEGG did not list disease pathways for this entry.</p>
+        <p style={{ color: COLORS.gray600, fontSize: 14 }}>KEGG did not list disease pathways for this entry.</p>
       )}
-      {data.sourceUrl && <a href={data.sourceUrl} target="_blank" rel="noreferrer" style={{ ...secondaryButton({ display: "inline-block", marginTop: 16, textDecoration: "none" }) }}>Open KEGG Entry</a>}
+      {data.sourceUrl && (
+        <a href={data.sourceUrl} target="_blank" rel="noreferrer" style={{ ...secondaryButton({ display: "inline-flex", marginTop: 20, textDecoration: "none" }) }}>
+          Open KEGG Entry
+        </a>
+      )}
     </div>
   );
 }
@@ -692,11 +1226,11 @@ function ExternalDiseaseCard({ data }) {
   const kegg = data.kegg?.matches || [];
   const geo = data.geo?.datasetIds || [];
   return (
-    <Panel style={{ marginTop: 18 }}>
-      <h3 style={{ margin: "0 0 12px", color: COLORS.navy }}>Live Public Database Match</h3>
-      {hits.length > 0 && <p style={{ color: COLORS.gray800 }}><b>Open Targets:</b> {hits.map((h) => `${h.name} (${h.id})`).join(", ")}</p>}
-      {kegg.length > 0 && <p style={{ color: COLORS.gray800 }}><b>KEGG:</b> {kegg.map((h) => `${h.name} (${h.id})`).join(", ")}</p>}
-      {geo.length > 0 && <p style={{ color: COLORS.gray800 }}><b>GEO dataset IDs:</b> {geo.join(", ")}</p>}
+    <Panel style={{ marginTop: 24 }}>
+      <h3 style={{ margin: "0 0 12px", color: COLORS.navy, fontSize: 18 }}>Live Public Database Match</h3>
+      {hits.length > 0 && <p style={{ color: COLORS.gray800, fontSize: 14 }}><b>Open Targets:</b> {hits.map((h) => `${h.name} (${h.id})`).join(", ")}</p>}
+      {kegg.length > 0 && <p style={{ color: COLORS.gray800, fontSize: 14 }}><b>KEGG:</b> {kegg.map((h) => `${h.name} (${h.id})`).join(", ")}</p>}
+      {geo.length > 0 && <p style={{ color: COLORS.gray800, fontSize: 14 }}><b>GEO dataset IDs:</b> {geo.join(", ")}</p>}
     </Panel>
   );
 }
@@ -726,27 +1260,39 @@ function DrugDetail({ user, item, setPage }) {
 
   return (
     <PageShell maxWidth={980}>
-      <button onClick={() => setPage("drugs")} style={secondaryButton({ marginBottom: 18 })}>Back to Drug Library</button>
-      {message && <p style={{ color: COLORS.amber }}>{message}</p>}
+      <button onClick={() => setPage("drugs")} style={secondaryButton({ marginBottom: 20 })}>
+        &larr; Back to Drug Library
+      </button>
+      {message && <p style={{ color: COLORS.amber, fontSize: 14 }}>{message}</p>}
       <Panel>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
           <div>
-            <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: 0 }}>{drug.name}</h1>
-            <p style={{ color: COLORS.gray600 }}>{drug.description || drug.indication}</p>
+            <h1 style={{ color: COLORS.navy, margin: 0, fontSize: 32 }}>{drug.name}</h1>
+            <p style={{ color: COLORS.gray600, marginTop: 6, fontSize: 15, lineHeight: 1.5 }}>{drug.description || drug.indication}</p>
           </div>
-          <Badge>{drug.status || "unknown"}</Badge>
+          <Badge tone={drug.status === "approved" ? "teal" : "amber"}>{drug.status || "unknown"}</Badge>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginTop: 18 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginTop: 22 }}>
           <Info label="Class" value={drug.drugClass} />
           <Info label="Molecular Formula" value={drug.molecularFormula || pubchem?.molecularFormula} />
           <Info label="Molecular Weight" value={drug.molecularWeight || pubchem?.molecularWeight} />
           <Info label="DrugBank / ChEMBL" value={`${drug.drugbankId || "N/A"} / ${drug.chemblId || "N/A"}`} />
         </div>
-        {pubchem?.image2d && <img alt={`${drug.name} structure`} src={pubchem.image2d} style={{ marginTop: 18, maxWidth: 260, border: `1px solid ${COLORS.gray100}`, borderRadius: 8 }} />}
-        <h3 style={{ color: COLORS.navy }}>Primary Targets</h3>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{(drug.primaryTargets || []).map((t) => <Badge key={t.symbol} tone="navy">{t.symbol}</Badge>)}</div>
-        <h3 style={{ color: COLORS.navy }}>Pathways</h3>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{(drug.pathways || []).map((p) => <Badge key={p.id} tone="purple">{p.name}</Badge>)}</div>
+        {pubchem?.image2d && (
+          <img alt={`${drug.name} structure`} src={pubchem.image2d} style={{ marginTop: 22, maxWidth: 260, border: `1px solid ${COLORS.gray100}`, borderRadius: 12, padding: 8 }} />
+        )}
+        <h3 style={{ color: COLORS.navy, marginTop: 24, marginBottom: 12 }}>Primary Targets</h3>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {(drug.primaryTargets || []).map((t) => (
+            <Badge key={t.symbol} tone="navy">{t.symbol}</Badge>
+          ))}
+        </div>
+        <h3 style={{ color: COLORS.navy, marginTop: 20, marginBottom: 12 }}>Pathways</h3>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {(drug.pathways || []).map((p) => (
+            <Badge key={p.id} tone="purple">{p.name}</Badge>
+          ))}
+        </div>
       </Panel>
     </PageShell>
   );
@@ -777,24 +1323,38 @@ function DiseaseDetail({ user, item, setPage }) {
 
   return (
     <PageShell maxWidth={980}>
-      <button onClick={() => setPage("diseases")} style={secondaryButton({ marginBottom: 18 })}>Back to Disease Library</button>
-      {message && <p style={{ color: COLORS.amber }}>{message}</p>}
+      <button onClick={() => setPage("diseases")} style={secondaryButton({ marginBottom: 20 })}>
+        &larr; Back to Disease Library
+      </button>
+      {message && <p style={{ color: COLORS.amber, fontSize: 14 }}>{message}</p>}
       <Panel>
-        <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: 0 }}>{disease.name}</h1>
-        <p style={{ color: COLORS.gray600 }}>{disease.description || "No description available."}</p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+        <h1 style={{ color: COLORS.navy, margin: 0, fontSize: 32 }}>{disease.name}</h1>
+        <p style={{ color: COLORS.gray600, marginTop: 6, fontSize: 15, lineHeight: 1.5 }}>{disease.description || "No description available."}</p>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "16px 0 20px" }}>
           <Badge tone="purple">{disease.diseaseType || "untyped"}</Badge>
           {disease.isRare && <Badge tone="amber">rare disease</Badge>}
           {disease.omimId && <Badge tone="navy">OMIM {disease.omimId}</Badge>}
         </div>
-        <h3 style={{ color: COLORS.navy }}>Associated Genes</h3>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{(disease.associatedGenes || []).map((g) => <Badge key={g.symbol}>{g.symbol}</Badge>)}</div>
-        <h3 style={{ color: COLORS.navy }}>Pathways</h3>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{(disease.pathways || []).map((p) => <Badge key={p.id} tone="purple">{p.name}</Badge>)}</div>
+        <h3 style={{ color: COLORS.navy, marginTop: 20, marginBottom: 12 }}>Associated Genes</h3>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {(disease.associatedGenes || []).map((g) => (
+            <Badge key={g.symbol}>{g.symbol}</Badge>
+          ))}
+        </div>
+        <h3 style={{ color: COLORS.navy, marginTop: 20, marginBottom: 12 }}>Pathways</h3>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {(disease.pathways || []).map((p) => (
+            <Badge key={p.id} tone="purple">{p.name}</Badge>
+          ))}
+        </div>
       </Panel>
-      <Panel style={{ marginTop: 16 }}>
-        <h3 style={{ marginTop: 0, color: COLORS.navy }}>Stored Predictions</h3>
-        {predictions.length === 0 ? <p style={{ color: COLORS.gray600 }}>No predictions stored yet. Run the predictor for this disease.</p> : predictions.slice(0, 8).map((p) => <PredictionRow key={p.id} pred={p} />)}
+      <Panel style={{ marginTop: 20 }}>
+        <h3 style={{ marginTop: 0, color: COLORS.navy, fontSize: 18, marginBottom: 14 }}>Stored Predictions</h3>
+        {predictions.length === 0 ? (
+          <p style={{ color: COLORS.gray600, fontSize: 14 }}>No predictions stored yet. Run the predictor for this disease.</p>
+        ) : (
+          predictions.slice(0, 8).map((p) => <PredictionRow key={p.id} pred={p} />)
+        )}
       </Panel>
     </PageShell>
   );
@@ -802,9 +1362,9 @@ function DiseaseDetail({ user, item, setPage }) {
 
 function Info({ label, value }) {
   return (
-    <div style={{ background: COLORS.gray50, borderRadius: 8, padding: 14 }}>
-      <div style={{ color: COLORS.gray600, fontSize: 12, fontWeight: 700, marginBottom: 4 }}>{label}</div>
-      <div style={{ color: COLORS.navy, fontWeight: 700, overflowWrap: "anywhere", lineHeight: 1.35 }}>{value || "N/A"}</div>
+    <div style={{ background: COLORS.gray50, border: `1px solid ${COLORS.gray100}`, borderRadius: 10, padding: 12 }}>
+      <div style={{ color: COLORS.gray600, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>{label}</div>
+      <div style={{ color: COLORS.navy, fontWeight: 700, fontSize: 14, overflowWrap: "anywhere", lineHeight: 1.35 }}>{value || "N/A"}</div>
     </div>
   );
 }
@@ -850,9 +1410,11 @@ function PredictPage({ user, setPage }) {
       "Methodology: Ensemble ranking using molecular similarity, gene/target network overlap, pathway overlap, and deterministic GNN proxy.",
       "",
       "Currently Used / Standard Drugs:",
-      ...(currentTreatments.length ? currentTreatments.flatMap((item, index) => [
-        `${index + 1}. ${item.name} - ${item.reason || "Current/standard treatment"}`,
-      ]) : ["No current-treatment mapping found in the local curated set."]),
+      ...(currentTreatments.length
+        ? currentTreatments.flatMap((item, index) => [
+            `${index + 1}. ${item.name} - ${item.reason || "Current/standard treatment"}`,
+          ])
+        : ["No current-treatment mapping found in the local curated set."]),
       "",
       "Top Candidate Drugs:",
       ...results.flatMap((pred, index) => [
@@ -876,37 +1438,87 @@ function PredictPage({ user, setPage }) {
 
   return (
     <PageShell maxWidth={980}>
-      <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: 0 }}>Potential Drug Repurposing Predictor</h1>
-      <Panel>
-        <label style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray600 }}>Target Disease</label>
-        <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-          <input value={disease} onChange={(e) => setDisease(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runPrediction()} placeholder="Alzheimer's Disease, ALS, hypertension..." style={inputStyle({ flex: "1 1 280px" })} />
-          <button onClick={runPrediction} disabled={loading} style={primaryButton({ opacity: loading ? 0.6 : 1 })}>{loading ? "Running..." : "Run Prediction"}</button>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 32, color: COLORS.navy, margin: 0 }}>Drug Repurposing Predictor</h1>
+        <p style={{ color: COLORS.gray600, marginTop: 4, fontSize: 15 }}>
+          Run AI ensemble predictions (Molecular Similarity + Target Overlap + GNN Proxy) for any disease.
+        </p>
+      </div>
+
+      <Panel style={{ padding: 28 }}>
+        <label style={{ fontSize: 13, fontWeight: 800, color: COLORS.navy, textTransform: "uppercase", letterSpacing: "0.04em", display: "block" }}>
+          Target Disease or Indication
+        </label>
+        <div style={{ display: "flex", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
+          <input
+            value={disease}
+            onChange={(e) => setDisease(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && runPrediction()}
+            placeholder="e.g. Alzheimer's Disease, ALS, Hypertension, Epilepsy..."
+            style={inputStyle({ flex: "1 1 320px", fontSize: 15, padding: "12px 16px" })}
+          />
+          <button onClick={runPrediction} disabled={loading} style={primaryButton({ opacity: loading ? 0.65 : 1, padding: "12px 26px", fontSize: 15 })}>
+            {loading ? "Analyzing Target..." : "Run Prediction"}
+          </button>
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-          {["Alzheimer's Disease", "Amyotrophic Lateral Sclerosis", "Epilepsy", "Breast Cancer"].map((x) => <button key={x} onClick={() => setDisease(x)} style={secondaryButton({ padding: "6px 10px", fontSize: 12 })}>{x}</button>)}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.gray600, textTransform: "uppercase" }}>Samples:</span>
+          {["Alzheimer's Disease", "Amyotrophic Lateral Sclerosis", "Epilepsy", "Breast Cancer"].map((x) => (
+            <button key={x} onClick={() => setDisease(x)} style={secondaryButton({ padding: "5px 11px", fontSize: 12, borderRadius: 20 })}>
+              {x}
+            </button>
+          ))}
         </div>
       </Panel>
-      {error && <p style={{ color: COLORS.amber }}>{error}</p>}
+
+      {error && (
+        <div style={{ background: COLORS.coralBg, color: COLORS.coral, border: "1px solid #FECDD3", borderRadius: 10, padding: 14, marginTop: 18, fontSize: 14 }}>
+          {error}
+        </div>
+      )}
+
       {(currentTreatments.length > 0 || results.length > 0) && (
-        <section style={{ marginTop: 22 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-            <h2 style={{ color: COLORS.navy, margin: 0 }}>Results for {meta?.disease?.name || disease}</h2>
-            <button onClick={downloadReport} style={secondaryButton({ color: COLORS.teal, borderColor: COLORS.teal })}>Download PDF Report</button>
+        <section style={{ marginTop: 32 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+            <div>
+              <h2 style={{ color: COLORS.navy, margin: 0, fontSize: 24 }}>Prediction Results for {meta?.disease?.name || disease}</h2>
+              <p style={{ color: COLORS.gray600, fontSize: 13, marginTop: 2 }}>Model: Ensemble (Similarity + Target Overlap + GNN proxy)</p>
+            </div>
+            <button onClick={downloadReport} style={secondaryButton({ color: COLORS.teal, borderColor: COLORS.teal, padding: "10px 18px" })}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Download PDF Report
+            </button>
           </div>
-          {downloadStatus && <div style={{ color: downloadStatus.startsWith("Error:") ? COLORS.amber : COLORS.gray600, fontSize: 13, marginBottom: 12, overflowWrap: "anywhere" }}>{downloadStatus}</div>}
-          <Panel style={{ marginBottom: 16 }}>
-            <h3 style={{ color: COLORS.navy, marginTop: 0 }}>Currently Used Drugs</h3>
+
+          {downloadStatus && (
+            <div style={{ color: downloadStatus.startsWith("Error:") ? COLORS.coral : COLORS.teal, fontSize: 13, marginBottom: 16, overflowWrap: "anywhere", fontWeight: 600 }}>
+              {downloadStatus}
+            </div>
+          )}
+
+          <Panel style={{ marginBottom: 24, padding: 24 }}>
+            <h3 style={{ color: COLORS.navy, marginTop: 0, marginBottom: 16, fontSize: 18 }}>Currently Approved / Standard Treatments</h3>
             {currentTreatments.length === 0 ? (
-              <p style={{ color: COLORS.gray600 }}>No standard-treatment mapping found for this disease in the local curated set.</p>
+              <p style={{ color: COLORS.gray600, fontSize: 14 }}>No standard-treatment mapping found for this disease in the local curated set.</p>
             ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                {currentTreatments.map((item) => <CurrentTreatmentRow key={item.name} item={item} />)}
+              <div style={{ display: "grid", gap: 12 }}>
+                {currentTreatments.map((item) => (
+                  <CurrentTreatmentRow key={item.name} item={item} />
+                ))}
               </div>
             )}
           </Panel>
-          <h3 style={{ color: COLORS.navy }}>Repurposed Drug Candidates</h3>
-          {results.length === 0 ? <p style={{ color: COLORS.gray600 }}>No repurposing candidates passed the score threshold.</p> : results.map((pred) => <PredictionRow key={pred.id || `${pred.drug?.id}-${pred.rank}`} pred={pred} />)}
+
+          <h3 style={{ color: COLORS.navy, fontSize: 20, marginBottom: 14 }}>Predicted Repurposition Candidates</h3>
+          {results.length === 0 ? (
+            <p style={{ color: COLORS.gray600, fontSize: 14 }}>No repurposing candidates passed the score threshold.</p>
+          ) : (
+            results.map((pred) => <PredictionRow key={pred.id || `${pred.drug?.id}-${pred.rank}`} pred={pred} />)
+          )}
         </section>
       )}
     </PageShell>
@@ -916,15 +1528,21 @@ function PredictPage({ user, setPage }) {
 function CurrentTreatmentRow({ item }) {
   const drug = item.drug || {};
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, background: COLORS.gray50, borderRadius: 8, padding: 14 }}>
-      <div style={{ width: 44, height: 44, borderRadius: 8, background: COLORS.navyBg, display: "grid", placeItems: "center", color: COLORS.navyMid, fontWeight: 900 }}>Rx</div>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 14, background: COLORS.gray50, border: `1px solid ${COLORS.gray100}`, borderRadius: 12, padding: 16 }}>
+      <div style={{ width: 44, height: 44, borderRadius: 10, background: COLORS.navyBg, color: COLORS.navyMid, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 15, flex: "0 0 44px" }}>
+        Rx
+      </div>
       <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-          <strong style={{ color: COLORS.navy }}>{item.name}</strong>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <strong style={{ color: COLORS.navy, fontSize: 16 }}>{item.name}</strong>
           <Badge tone={item.isInLocalLibrary ? "teal" : "navy"}>{item.isInLocalLibrary ? "local library" : "standard care"}</Badge>
         </div>
-        <div style={{ color: COLORS.gray600, marginTop: 4, lineHeight: 1.45 }}>{item.reason}</div>
-        {drug.drugClass && <div style={{ marginTop: 8 }}><Badge tone="purple">{drug.drugClass}</Badge></div>}
+        <div style={{ color: COLORS.gray600, marginTop: 4, fontSize: 14, lineHeight: 1.45 }}>{item.reason}</div>
+        {drug.drugClass && (
+          <div style={{ marginTop: 8 }}>
+            <Badge tone="purple">{drug.drugClass}</Badge>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -933,25 +1551,39 @@ function CurrentTreatmentRow({ item }) {
 function PredictionRow({ pred }) {
   const drug = pred.drug || {};
   const sourceLabel = pred.source === "chembl-api" ? "ChEMBL API" : pred.source === "open-targets-api" ? "Open Targets API" : "Local fallback";
+  const scorePct = Math.round((pred.scores?.ensemble || pred.confidencePct || 75));
+
   return (
-    <Panel style={{ marginBottom: 12 }}>
-      <div style={{ display: "flex", gap: 16, alignItems: "flex-start", minWidth: 0 }}>
-        <div style={{ width: 58, height: 58, borderRadius: 8, background: COLORS.tealBg, display: "grid", placeItems: "center", color: COLORS.teal, fontWeight: 900, flex: "0 0 58px" }}>Rx</div>
+    <Panel style={{ marginBottom: 14, padding: 22 }}>
+      <div style={{ display: "flex", gap: 18, alignItems: "flex-start", minWidth: 0 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 12, background: COLORS.tealBg, color: COLORS.teal, border: `1px solid ${COLORS.tealBorder}`, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 16, flex: "0 0 52px" }}>
+          #{pred.rank || 1}
+        </div>
         <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <h3 style={{ margin: 0, color: COLORS.navy }}>{drug.name}</h3>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <h3 style={{ margin: 0, color: COLORS.navy, fontSize: 20, fontWeight: 800 }}>{drug.name}</h3>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
               <Badge tone="purple">{sourceLabel}</Badge>
-              <Badge tone={pred.evidenceLevel === "high" ? "teal" : pred.evidenceLevel === "moderate" ? "navy" : "amber"}>{pred.evidenceLevel || "low"} evidence</Badge>
+              <Badge tone={pred.evidenceLevel === "high" ? "teal" : pred.evidenceLevel === "moderate" ? "navy" : "amber"}>
+                {pred.evidenceLevel || "low"} evidence
+              </Badge>
             </div>
           </div>
-          <p style={{ color: COLORS.gray600 }}>{pred.rationale}</p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {pred.targetName && <Badge tone="navy">Target {pred.targetName}</Badge>}
-            {pred.actionType && <Badge>Predicted Interaction Mode: {pred.actionType}</Badge>}
-            {drug.molecularWeight && <Badge tone="amber">MW {drug.molecularWeight}</Badge>}
+
+          <p style={{ color: COLORS.gray800, fontSize: 14, lineHeight: 1.5, margin: "10px 0 12px" }}>{pred.rationale}</p>
+
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+            {pred.targetName && <Badge tone="navy">Target: {pred.targetName}</Badge>}
+            {pred.actionType && <Badge tone="cyan">Mode: {pred.actionType}</Badge>}
+            {drug.molecularWeight && <Badge tone="amber">MW: {drug.molecularWeight}</Badge>}
+            {drug.drugClass && <Badge tone="purple">Class: {drug.drugClass}</Badge>}
           </div>
-          {pred.mechanismOfAction && <div style={{ color: COLORS.gray600, marginTop: 10, fontSize: 13, lineHeight: 1.45 }}><b>Mechanism:</b> {pred.mechanismOfAction}</div>}
+
+          {pred.mechanismOfAction && (
+            <div style={{ color: COLORS.gray600, background: COLORS.gray50, border: `1px solid ${COLORS.gray100}`, padding: "10px 14px", borderRadius: 8, fontSize: 13, lineHeight: 1.45, marginTop: 10 }}>
+              <b>Mechanism of Action:</b> {pred.mechanismOfAction}
+            </div>
+          )}
         </div>
       </div>
     </Panel>
@@ -1017,52 +1649,119 @@ function InteractionNetworkPage({ user, setPage }) {
 
   return (
     <PageShell maxWidth={1200}>
-      <h1 className="network-title" style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: "0 0 16px", lineHeight: 1.12 }}>Drug-Target Interaction Network</h1>
-      <Panel style={{ overflow: "hidden" }}>
-        <div className="network-controls" style={{ display: "flex", justifyContent: "space-between", alignItems: "stretch", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+      <div style={{ marginBottom: 16 }}>
+        <h1 className="network-title" style={{ fontSize: 32, color: COLORS.navy, margin: 0 }}>
+          Drug-Target Interaction Network
+        </h1>
+        <p style={{ color: COLORS.gray600, marginTop: 4, fontSize: 15 }}>
+          Interactive biological target graph showing binding affinities, pathways, and interaction types.
+        </p>
+      </div>
+
+      <Panel style={{ overflow: "hidden", padding: 24 }}>
+        <div className="network-controls" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
           <div style={{ flex: "1 1 280px", minWidth: 0 }}>
-            <select value={drugId} onChange={(e) => setDrugId(e.target.value)} style={inputStyle({ width: "100%", minHeight: 46 })}>
-              {drugs.map((drug) => <option key={drug.id} value={drug.id}>{drug.name}</option>)}
+            <label style={{ fontSize: 12, fontWeight: 700, color: COLORS.gray600, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Select Drug</label>
+            <select value={drugId} onChange={(e) => setDrugId(e.target.value)} style={inputStyle({ width: "100%", minHeight: 44, fontWeight: 600 })}>
+              {drugs.map((drug) => (
+                <option key={drug.id} value={drug.id}>
+                  {drug.name}
+                </option>
+              ))}
             </select>
-            <div style={{ color: COLORS.gray600, fontSize: 13, marginTop: 8 }}>{network?.drug?.name || "Drug"} - {layout.primaryCount} primary targets - {layout.secondaryCount} secondary</div>
           </div>
-          <div className="network-mode-controls" style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: "1 1 300px", justifyContent: "flex-end" }}>
+          <div className="network-mode-controls" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {["radial", "force", "hierarchical"].map((mode) => (
-              <button key={mode} onClick={() => setLayoutMode(mode)} style={layoutMode === mode ? primaryButton({ padding: "10px 12px", flex: "1 1 96px" }) : secondaryButton({ padding: "10px 12px", flex: "1 1 96px" })}>
+              <button
+                key={mode}
+                onClick={() => setLayoutMode(mode)}
+                style={layoutMode === mode ? primaryButton({ padding: "8px 16px", fontSize: 13 }) : secondaryButton({ padding: "8px 16px", fontSize: 13 })}
+              >
                 {mode === "force" ? "Force-directed" : mode[0].toUpperCase() + mode.slice(1)}
               </button>
             ))}
           </div>
         </div>
-        {message && <p style={{ color: COLORS.amber }}>{message}</p>}
-        <div className="network-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(240px, 280px)", gap: 16, alignItems: "stretch", minWidth: 0 }}>
-          <div ref={(node) => { networkRef.current = node; }} style={{ position: "relative", background: "#F7F8FB", border: `1px solid ${COLORS.gray100}`, borderRadius: 8, minHeight: 420, display: "grid", placeItems: "center", overflow: "hidden", minWidth: 0 }}>
+
+        {message && <p style={{ color: COLORS.amber, fontSize: 14 }}>{message}</p>}
+
+        <div className="network-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 300px)", gap: 20, alignItems: "stretch", minWidth: 0 }}>
+          <div
+            ref={(node) => {
+              networkRef.current = node;
+            }}
+            style={{
+              position: "relative",
+              background: "linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%)",
+              border: `1px solid ${COLORS.gray100}`,
+              borderRadius: 14,
+              minHeight: 440,
+              display: "grid",
+              placeItems: "center",
+              overflow: "hidden",
+              minWidth: 0,
+            }}
+          >
             <svg viewBox="0 0 760 420" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", maxWidth: 820, height: "auto", display: "block" }}>
               <defs>
-                <filter id="softGlow"><feGaussianBlur stdDeviation="6" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+                <filter id="softGlow">
+                  <feGaussianBlur stdDeviation="6" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
               </defs>
-              {/* Pathway grouping bubbles sit behind related visible targets. */}
               {buildPathwayBubbles(visibleTargets).map((group) => (
                 <g key={group.name} opacity="0.5">
                   <ellipse cx={group.cx} cy={group.cy} rx={group.rx} ry={group.ry} fill={group.kind === "signaling" ? "#EEEDFE" : COLORS.tealBg} stroke={group.kind === "signaling" ? "#AFA9EC" : "#5DCAA5"} strokeWidth="0.5" />
-                  <text x={group.x} y={group.y} fontSize="10" fontWeight="800" fill={group.kind === "signaling" ? "#7F77DD" : "#1D9E75"}>{group.name}</text>
+                  <text x={group.x} y={group.y} fontSize="10" fontWeight="800" fill={group.kind === "signaling" ? "#7F77DD" : "#1D9E75"}>
+                    {group.name}
+                  </text>
                 </g>
               ))}
-              {/* Edges encode interaction type by color and affinity by stroke width. */}
               {layout.edges.map((edge) => {
                 const isVisible = visibleIds.has(edge.target.id);
                 const style = interactionStyle(edge.target.interactionType);
-                return <line key={`${edge.source.id}-${edge.target.id}`} x1={edge.source.x} y1={edge.source.y} x2={edge.target.x} y2={edge.target.y} stroke={style.stroke} strokeWidth={affinityStroke(edge.target.ki)} strokeDasharray={style.dash} opacity={isVisible ? 0.8 : 0} style={{ transition: "opacity 0.2s" }} />;
+                return (
+                  <line
+                    key={`${edge.source.id}-${edge.target.id}`}
+                    x1={edge.source.x}
+                    y1={edge.source.y}
+                    x2={edge.target.x}
+                    y2={edge.target.y}
+                    stroke={style.stroke}
+                    strokeWidth={affinityStroke(edge.target.ki)}
+                    strokeDasharray={style.dash}
+                    opacity={isVisible ? 0.8 : 0}
+                    style={{ transition: "opacity 0.2s" }}
+                  />
+                );
               })}
-              {/* Nodes animate between radial, force-directed, and hierarchical layouts. */}
               {layout.nodes.map((node) => {
                 const isVisible = node.type === "drug" || visibleIds.has(node.id);
                 const style = interactionStyle(node.interactionType);
                 return (
-                  <g key={node.id} transform={`translate(${node.x} ${node.y})`} filter={node.type === "drug" ? "url(#softGlow)" : undefined} opacity={isVisible ? 1 : 0} style={{ transition: "opacity 0.2s, transform 0.6s ease", cursor: node.type === "drug" ? "default" : "pointer" }} onMouseEnter={(e) => moveTooltip(e, node)} onMouseMove={(e) => moveTooltip(e, node)} onMouseLeave={() => setTooltip(null)} onClick={() => node.type !== "drug" && setSelectedTarget(node)}>
+                  <g
+                    key={node.id}
+                    transform={`translate(${node.x} ${node.y})`}
+                    filter={node.type === "drug" ? "url(#softGlow)" : undefined}
+                    opacity={isVisible ? 1 : 0}
+                    style={{ transition: "opacity 0.2s, transform 0.6s ease", cursor: node.type === "drug" ? "default" : "pointer" }}
+                    onMouseEnter={(e) => moveTooltip(e, node)}
+                    onMouseMove={(e) => moveTooltip(e, node)}
+                    onMouseLeave={() => setTooltip(null)}
+                    onClick={() => node.type !== "drug" && setSelectedTarget(node)}
+                  >
                     <circle r={node.r} fill={node.type === "drug" ? COLORS.purple : style.fill} stroke={node.type === "drug" ? COLORS.purple : style.stroke} strokeWidth={node.type === "drug" ? 0 : 2.2} />
-                    <text y={node.type === "drug" ? 4 : -2} textAnchor="middle" fontSize={node.type === "drug" ? 13 : 10.5} fontWeight="800" fill={node.type === "drug" ? COLORS.white : COLORS.gray800}>{shortLabel(node.label, node.type === "drug" ? 12 : 8)}</text>
-                    {node.type !== "drug" && <text y="11" textAnchor="middle" fontSize="8.5" fontWeight="700" fill={COLORS.gray600}>{node.isPrimary ? "primary" : node.importance === "secondary" ? "secondary" : "tertiary"}</text>}
+                    <text y={node.type === "drug" ? 4 : -2} textAnchor="middle" fontSize={node.type === "drug" ? 13 : 10.5} fontWeight="800" fill={node.type === "drug" ? COLORS.white : COLORS.gray800}>
+                      {shortLabel(node.label, node.type === "drug" ? 12 : 8)}
+                    </text>
+                    {node.type !== "drug" && (
+                      <text y="11" textAnchor="middle" fontSize="8.5" fontWeight="700" fill={COLORS.gray600}>
+                        {node.isPrimary ? "primary" : node.importance === "secondary" ? "secondary" : "tertiary"}
+                      </text>
+                    )}
                   </g>
                 );
               })}
@@ -1096,11 +1795,11 @@ function buildDrugNetworkLayout(network, mode = "radial") {
 }
 
 const INTERACTION_COLORS = {
-  inhibitor: { stroke: "#D85A30", fill: "#F0997B", label: "Inhibitor" },
-  activator: { stroke: "#639922", fill: "#97C459", label: "Activator" },
-  allosteric: { stroke: "#7F77DD", fill: "#AFA9EC", label: "Allosteric", dash: "4 3" },
-  predicted: { stroke: "#7F77DD", fill: "#AFA9EC", label: "Predicted", dash: "4 3" },
-  unknown: { stroke: "#888780", fill: "#DADDD8", label: "Unknown" },
+  inhibitor: { stroke: "#E11D48", fill: "#FECDD3", label: "Inhibitor" },
+  activator: { stroke: "#0F6E56", fill: "#A7F3D0", label: "Activator" },
+  allosteric: { stroke: "#6366F1", fill: "#C7D2FE", label: "Allosteric", dash: "4 3" },
+  predicted: { stroke: "#6366F1", fill: "#C7D2FE", label: "Predicted", dash: "4 3" },
+  unknown: { stroke: "#64748B", fill: "#E2E8F0", label: "Unknown" },
 };
 
 function interactionStyle(type = "unknown") {
@@ -1194,8 +1893,8 @@ function NetworkTooltip({ tooltip }) {
   const node = tooltip.node;
   const style = interactionStyle(node.interactionType);
   return (
-    <div style={{ position: "absolute", left: tooltip.x, top: tooltip.y, width: 244, zIndex: 5, background: COLORS.white, border: `1px solid ${COLORS.gray100}`, borderRadius: 8, padding: 12, boxShadow: "0 12px 30px rgba(4,44,83,0.16)", pointerEvents: "none", color: COLORS.gray800 }}>
-      <div style={{ color: COLORS.navy, fontSize: 15, fontWeight: 900, marginBottom: 8 }}>{node.label}</div>
+    <div style={{ position: "absolute", left: tooltip.x, top: tooltip.y, width: 244, zIndex: 5, background: COLORS.white, border: `1px solid ${COLORS.gray100}`, borderRadius: 12, padding: 14, boxShadow: "0 14px 36px rgba(6,24,43,0.18)", pointerEvents: "none", color: COLORS.gray800 }}>
+      <div style={{ color: COLORS.navy, fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{node.label}</div>
       <DetailRow label="Interaction" value={node.type === "drug" ? "Primary drug" : interactionStyle(node.interactionType).label} color={style.stroke} />
       <DetailRow label="Binding affinity" value={node.ki || "N/A"} />
       <DetailRow label="Evidence" value={node.evidenceSource || "N/A"} />
@@ -1204,7 +1903,12 @@ function NetworkTooltip({ tooltip }) {
 }
 
 function DetailRow({ label, value, color }) {
-  return <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, lineHeight: 1.7 }}><span style={{ color: COLORS.gray600 }}>{label}</span><strong style={{ color: color || COLORS.gray800, textAlign: "right" }}>{value}</strong></div>;
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, lineHeight: 1.7 }}>
+      <span style={{ color: COLORS.gray600 }}>{label}</span>
+      <strong style={{ color: color || COLORS.gray800, textAlign: "right" }}>{value}</strong>
+    </div>
+  );
 }
 
 function NetworkSidePanel({ drug, layout, selectedTarget, drugs }) {
@@ -1213,43 +1917,48 @@ function NetworkSidePanel({ drug, layout, selectedTarget, drugs }) {
   const drugClass = drug?.drugClass || drug?.drug_class || "Therapeutic";
   const similar = selectedTarget ? drugs.filter((item) => item.name !== name).slice(0, 4) : [];
   return (
-    <aside style={{ display: "grid", gap: 12, alignContent: "start" }}>
-      {/* Selected drug info card summarizes the current center node. */}
-      <Panel style={{ padding: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 38, height: 38, borderRadius: "50%", background: COLORS.purple, color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 900 }}>{initials(name)}</div>
+    <aside style={{ display: "grid", gap: 14, alignContent: "start" }}>
+      <Panel style={{ padding: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: COLORS.purple, color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 15 }}>{initials(name)}</div>
           <div>
-            <div style={{ color: COLORS.navy, fontWeight: 900 }}>{name}</div>
+            <div style={{ color: COLORS.navy, fontWeight: 800, fontSize: 15 }}>{name}</div>
             <div style={{ color: COLORS.gray600, fontSize: 12 }}>{drugClass} · {status}</div>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 14 }}>
           <Stat label="Primary" value={layout.primaryCount} />
           <Stat label="Secondary" value={layout.secondaryCount} />
           <Stat label="Disease links" value={layout.diseaseLinkCount} />
         </div>
       </Panel>
-      {/* Interaction legend card mirrors node and edge colors. */}
-      <Panel style={{ padding: 14 }}>
-        <h3 style={{ margin: "0 0 10px", color: COLORS.navy, fontSize: 15 }}>Interaction Types</h3>
+      <Panel style={{ padding: 16 }}>
+        <h3 style={{ margin: "0 0 12px", color: COLORS.navy, fontSize: 15 }}>Interaction Types</h3>
         {["inhibitor", "activator", "allosteric"].map((type) => <InteractionLegendRow key={type} type={type} />)}
       </Panel>
-      {/* Selected target details update when a node is clicked. */}
-      <Panel style={{ padding: 14 }}>
-        <h3 style={{ margin: "0 0 10px", color: COLORS.navy, fontSize: 15 }}>Selected Node</h3>
-        {!selectedTarget ? <p style={{ margin: 0, color: COLORS.gray600, fontSize: 13 }}>Click a target node to see details</p> : (
+      <Panel style={{ padding: 16 }}>
+        <h3 style={{ margin: "0 0 12px", color: COLORS.navy, fontSize: 15 }}>Selected Node</h3>
+        {!selectedTarget ? (
+          <p style={{ margin: 0, color: COLORS.gray600, fontSize: 13 }}>Click a target node to inspect details</p>
+        ) : (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-              <strong style={{ color: COLORS.navy }}>{selectedTarget.label}</strong>
+              <strong style={{ color: COLORS.navy, fontSize: 15 }}>{selectedTarget.label}</strong>
               <InteractionBadge type={selectedTarget.interactionType} />
             </div>
-            <div style={{ marginTop: 10 }}>
+            <div style={{ marginTop: 12 }}>
               <DetailRow label="Binding affinity" value={selectedTarget.ki || "N/A"} />
               <DetailRow label="Evidence" value={selectedTarget.evidenceSource} />
               <DetailRow label="Disease links" value={selectedTarget.diseaseLinkCount} />
             </div>
-            <div style={{ marginTop: 12, color: COLORS.gray600, fontSize: 12, fontWeight: 800 }}>Similar drugs</div>
-            {similar.length ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>{similar.map((drug) => <Badge key={drug.id} tone="navy">{drug.name}</Badge>)}</div> : <p style={{ color: COLORS.gray600, fontSize: 12 }}>No other drugs found for this target</p>}
+            <div style={{ marginTop: 14, color: COLORS.gray600, fontSize: 12, fontWeight: 800 }}>Similar drugs</div>
+            {similar.length ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                {similar.map((drug) => <Badge key={drug.id} tone="navy">{drug.name}</Badge>)}
+              </div>
+            ) : (
+              <p style={{ color: COLORS.gray600, fontSize: 12, marginTop: 4 }}>No other drugs found for this target</p>
+            )}
           </div>
         )}
       </Panel>
@@ -1258,7 +1967,12 @@ function NetworkSidePanel({ drug, layout, selectedTarget, drugs }) {
 }
 
 function Stat({ label, value }) {
-  return <div style={{ background: COLORS.gray50, borderRadius: 8, padding: 8 }}><div style={{ color: COLORS.navy, fontWeight: 900 }}>{value}</div><div style={{ color: COLORS.gray600, fontSize: 11 }}>{label}</div></div>;
+  return (
+    <div style={{ background: COLORS.gray50, borderRadius: 8, padding: "8px 6px", textAlign: "center", border: `1px solid ${COLORS.gray100}` }}>
+      <div style={{ color: COLORS.navy, fontWeight: 900, fontSize: 16 }}>{value}</div>
+      <div style={{ color: COLORS.gray600, fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>{label}</div>
+    </div>
+  );
 }
 
 function initials(name) {
@@ -1267,27 +1981,55 @@ function initials(name) {
 
 function InteractionBadge({ type }) {
   const style = interactionStyle(type);
-  return <span style={{ background: style.fill, color: COLORS.navy, border: `1px solid ${style.stroke}`, borderRadius: 6, padding: "3px 7px", fontSize: 11, fontWeight: 800 }}>{style.label}</span>;
+  return (
+    <span style={{ background: style.fill, color: COLORS.navy, border: `1px solid ${style.stroke}`, borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 800 }}>
+      {style.label}
+    </span>
+  );
 }
 
 function InteractionLegendRow({ type }) {
   const style = interactionStyle(type);
-  return <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.gray800, fontSize: 13, marginBottom: 8 }}><span style={{ width: 12, height: 12, borderRadius: "50%", background: style.fill, border: `2px solid ${style.stroke}` }} />{style.label}</div>;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.gray800, fontSize: 13, marginBottom: 8 }}>
+      <span style={{ width: 12, height: 12, borderRadius: "50%", background: style.fill, border: `2px solid ${style.stroke}` }} />
+      {style.label}
+    </div>
+  );
 }
 
 function NetworkLegend() {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap", marginTop: 14, color: COLORS.gray600, fontSize: 12 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", marginTop: 16, color: COLORS.gray600, fontSize: 12 }}>
       {["inhibitor", "activator", "allosteric", "unknown"].map((type) => <InteractionLegendRow key={type} type={type} />)}
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><svg width="46" height="10"><line x1="2" y1="5" x2="44" y2="5" stroke={COLORS.gray800} strokeWidth="3.5" /></svg>Edge width = binding affinity strength</span>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><svg width="46" height="10"><line x1="2" y1="5" x2="44" y2="5" stroke="#7F77DD" strokeWidth="2" strokeDasharray="4 3" /></svg>Dashed line = predicted interaction</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <svg width="46" height="10"><line x1="2" y1="5" x2="44" y2="5" stroke={COLORS.gray800} strokeWidth="3.5" /></svg>
+        Edge width = binding affinity strength
+      </span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <svg width="46" height="10"><line x1="2" y1="5" x2="44" y2="5" stroke="#6366F1" strokeWidth="2" strokeDasharray="4 3" /></svg>
+        Dashed line = predicted interaction
+      </span>
     </div>
   );
 }
 
 function OrphaAvatar({ size = 42 }) {
   return (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: COLORS.white, display: "grid", placeItems: "center", boxShadow: `inset 0 0 0 1px ${COLORS.tealBg}`, flex: `0 0 ${size}px`, overflow: "hidden" }}>
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: COLORS.white,
+        display: "grid",
+        placeItems: "center",
+        boxShadow: `0 4px 12px rgba(15, 110, 86, 0.2)`,
+        flex: `0 0 ${size}px`,
+        overflow: "hidden",
+        border: `2px solid ${COLORS.tealBorder}`,
+      }}
+    >
       <img src={ORPHAAI_LOGO_SRC} alt={ORPHAAI_LOGO_ALT} style={{ width: size, height: size, objectFit: "contain" }} />
     </div>
   );
@@ -1295,15 +2037,20 @@ function OrphaAvatar({ size = 42 }) {
 
 function ChatbotPage({ onOpenChatbot }) {
   return (
-    <main style={{ maxWidth: 860, margin: "0 auto", padding: "42px 24px" }}>
-      <Panel style={{ textAlign: "center", padding: "44px 28px" }}>
-        <OrphaAvatar size={72} />
-        <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: "18px 0 10px" }}>OrphaAI Assistant</h1>
-        <p style={{ maxWidth: 620, margin: "0 auto 24px", color: COLORS.gray600, lineHeight: 1.7 }}>
-          Chat with the published OrphaAI Tars agent for drug repurposing questions, candidate exploration, target reasoning, and platform guidance.
+    <main style={{ maxWidth: 840, margin: "0 auto", padding: "48px 24px" }}>
+      <Panel style={{ textAlign: "center", padding: "52px 32px", borderRadius: 20 }}>
+        <OrphaAvatar size={80} />
+        <h1 style={{ color: COLORS.navy, margin: "20px 0 10px", fontSize: 32, fontWeight: 800 }}>OrphaAI Research Assistant</h1>
+        <p style={{ maxWidth: 600, margin: "0 auto 28px", color: COLORS.gray600, lineHeight: 1.7, fontSize: 16 }}>
+          Chat with the published OrphaAI agent for drug repurposing questions, candidate exploration, target reasoning, and platform guidance.
         </p>
-        <button onClick={onOpenChatbot} style={primaryButton({ fontSize: 16, padding: "13px 22px" })}>Open OrphaAI Assistant</button>
-        <p style={{ marginTop: 16, color: COLORS.gray600, fontSize: 13 }}>The assistant opens inside OrphaAI as an embedded chat panel.</p>
+        <button onClick={onOpenChatbot} style={primaryButton({ fontSize: 16, padding: "14px 28px" })}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          Open OrphaAI Assistant
+        </button>
+        <p style={{ marginTop: 18, color: COLORS.gray600, fontSize: 13 }}>The assistant opens as an embedded floating chat panel.</p>
       </Panel>
     </main>
   );
@@ -1312,9 +2059,11 @@ function ChatbotPage({ onOpenChatbot }) {
 function AdminPage({ user }) {
   if (!user) return <div style={{ textAlign: "center", padding: 80, color: COLORS.gray600 }}>Please sign in to access Admin panel.</div>;
   return (
-    <main style={{ maxWidth: 1000, margin: "0 auto", padding: "42px 24px" }}>
-      <h1 style={{ fontFamily: "Georgia, serif", color: COLORS.navy, margin: 0 }}>Admin Dashboard</h1>
-      <p style={{ color: COLORS.gray600 }}>Dataset sync endpoints are available for PubChem, ChEMBL, Open Targets, GEO, and related sources. Full DrugBank/OMIM syncing requires credentials or licensing.</p>
+    <main style={{ maxWidth: 1000, margin: "0 auto", padding: "48px 24px" }}>
+      <h1 style={{ color: COLORS.navy, margin: 0, fontSize: 32 }}>Admin Dashboard</h1>
+      <p style={{ color: COLORS.gray600, marginTop: 8, fontSize: 15 }}>
+        Dataset sync endpoints are available for PubChem, ChEMBL, Open Targets, GEO, and related sources. Full DrugBank/OMIM syncing requires credentials or licensing.
+      </p>
     </main>
   );
 }
@@ -1336,7 +2085,7 @@ export default function OrphaAI() {
   );
 
   return (
-    <div style={{ fontFamily: "Segoe UI, system-ui, sans-serif", background: "#FAFAF8", minHeight: "100vh" }}>
+    <div style={{ fontFamily: "var(--font-sans)", background: COLORS.gray50, minHeight: "100vh" }}>
       <NavBar page={page} setPage={setPage} user={user} logout={logout} />
       {page === "home" && <HeroPage setPage={setPage} />}
       {page === "predict" && protect(<PredictPage user={user} setPage={setPage} />)}
@@ -1348,10 +2097,22 @@ export default function OrphaAI() {
       {page === "diseaseDetail" && protect(<DiseaseDetail user={user} item={searchContext} setPage={setPage} />)}
       {page === "login" && <LoginPage setPage={setPage} />}
       {page === "admin" && protect(<AdminPage user={user} />)}
-      <footer style={{ background: COLORS.navy, color: "rgba(255,255,255,0.7)", textAlign: "center", padding: "26px 24px", fontSize: 13, marginTop: 40 }}>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: COLORS.white, marginBottom: 6 }}>OrphaAI</div>
-        <div>Drug repurposing research platform - public database aware</div>
-        <div>For research use only. Do not use the Repurposing Predictor to make any medical treatment decisions.</div>
+      <footer
+        style={{
+          background: COLORS.navy,
+          color: "rgba(255,255,255,0.75)",
+          textAlign: "center",
+          padding: "36px 24px",
+          fontSize: 13,
+          marginTop: 60,
+          borderTop: `1px solid rgba(255,255,255,0.1)`,
+        }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.white, marginBottom: 8, letterSpacing: "-0.02em" }}>OrphaAI</div>
+        <div style={{ marginBottom: 6 }}>Drug repurposing research platform — public database aware</div>
+        <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>
+          For research use only. Do not use the Repurposing Predictor to make any medical treatment decisions.
+        </div>
       </footer>
       <OrphaAIChatbot isOpen={chatbotOpen} onToggle={() => setChatbotOpen((open) => !open)} onClose={() => setChatbotOpen(false)} />
     </div>
