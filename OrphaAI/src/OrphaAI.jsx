@@ -532,62 +532,126 @@ function NavBar({ page, setPage, user, logout }) {
 function HeroPage({ setPage }) {
   return (
     <div className="animate-fade-in">
+      {/* Main Hero Section */}
       <section
         className="orpha-hero"
         style={{
-          background: "linear-gradient(135deg, #06182B 0%, #0A2E46 50%, #0F6E56 100%)",
-          padding: "80px 24px 64px",
+          background: "linear-gradient(135deg, #041221 0%, #072238 45%, #0B4638 100%)",
+          padding: "88px 24px 76px",
           textAlign: "center",
           position: "relative",
           overflow: "hidden",
         }}
       >
-        <div
+        {/* Subtle SVG Molecular Network Pattern in Hero Background */}
+        <svg
+          viewBox="0 0 1400 500"
+          preserveAspectRatio="xMidYMid slice"
           style={{
             position: "absolute",
             inset: 0,
-            backgroundImage: "radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px)",
-            backgroundSize: "28px 28px",
+            width: "100%",
+            height: "100%",
+            opacity: 0.28,
             pointerEvents: "none",
           }}
-        />
-        <div style={{ position: "relative", zIndex: 2, maxWidth: 840, margin: "0 auto" }}>
-          <div style={{ display: "inline-block", marginBottom: 20 }}>
-            <LogoMark size={76} />
+        >
+          <defs>
+            <filter id="nodeGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <line x1="120" y1="90" x2="280" y2="180" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="1" strokeDasharray="5 5" />
+          <line x1="280" y1="180" x2="210" y2="340" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="1" strokeDasharray="5 5" />
+          <line x1="280" y1="180" x2="480" y2="140" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="1" strokeDasharray="5 5" />
+          <line x1="1120" y1="100" x2="1280" y2="220" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="1" strokeDasharray="5 5" />
+          <line x1="1120" y1="100" x2="940" y2="160" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="1" strokeDasharray="5 5" />
+          <line x1="1280" y1="220" x2="1200" y2="380" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="1" strokeDasharray="5 5" />
+          
+          <circle cx="120" cy="90" r="5" fill="#2DD4BF" filter="url(#nodeGlow)" />
+          <circle cx="280" cy="180" r="7" fill="#38BDF8" filter="url(#nodeGlow)" />
+          <circle cx="210" cy="340" r="4" fill="#A7F3D0" />
+          <circle cx="480" cy="140" r="5" fill="#2DD4BF" />
+          <circle cx="1120" cy="100" r="6" fill="#38BDF8" filter="url(#nodeGlow)" />
+          <circle cx="1280" cy="220" r="7" fill="#2DD4BF" filter="url(#nodeGlow)" />
+          <circle cx="940" cy="160" r="4" fill="#A7F3D0" />
+          <circle cx="1200" cy="380" r="5" fill="#38BDF8" />
+        </svg>
+
+        {/* Hero Central Content Wrapper */}
+        <div style={{ position: "relative", zIndex: 2, maxWidth: 860, margin: "0 auto" }}>
+          {/* OrphaAI Logo Emblem - Centered directly above heading */}
+          <div style={{ display: "inline-block", marginBottom: 24 }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "12px 24px",
+                background: "rgba(255, 255, 255, 0.06)",
+                border: "1px solid rgba(255, 255, 255, 0.16)",
+                borderRadius: 24,
+                backdropFilter: "blur(8px)",
+                boxShadow: "0 14px 36px rgba(0, 0, 0, 0.28)",
+              }}
+            >
+              <LogoMark size={64} />
+            </div>
           </div>
+
+          {/* Main Title */}
           <h1
             style={{
-              fontSize: 48,
+              fontSize: 50,
               fontWeight: 800,
               color: COLORS.white,
-              margin: "0 0 18px",
+              margin: "0 0 20px",
               lineHeight: 1.15,
-              letterSpacing: "-0.03em",
+              letterSpacing: "-0.035em",
             }}
           >
-            AI-Powered Drug Repurposing &amp; Disease Analysis
+            AI-Powered{" "}
+            <span
+              style={{
+                background: "linear-gradient(135deg, #2DD4BF 0%, #38BDF8 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              Drug Repurposing
+            </span>{" "}
+            &amp; Disease Analysis
           </h1>
+
+          {/* Description */}
           <p
             style={{
-              maxWidth: 680,
-              margin: "0 auto 34px",
-              color: "rgba(255,255,255,0.85)",
-              fontSize: 18,
-              lineHeight: 1.65,
+              maxWidth: 720,
+              margin: "0 auto 38px",
+              color: "rgba(255, 255, 255, 0.86)",
+              fontSize: 17,
+              lineHeight: 1.68,
               fontWeight: 400,
             }}
           >
             OrphaAI combines curated biomedical seed data, live public-database lookups, and an interpretable scoring engine for accelerated drug repurposing discovery.
           </p>
+
+          {/* Hero Action Buttons */}
           <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
             <button
               onClick={() => setPage("predict")}
               style={primaryButton({
-                background: COLORS.white,
-                color: COLORS.teal,
+                background: "linear-gradient(135deg, #0F6E56 0%, #0D9488 100%)",
+                color: COLORS.white,
                 fontSize: 15,
-                padding: "13px 26px",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+                padding: "14px 28px",
+                boxShadow: "0 12px 28px rgba(15, 110, 86, 0.45)",
+                borderRadius: 12,
               })}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -596,28 +660,32 @@ function HeroPage({ setPage }) {
               </svg>
               Run Prediction Engine
             </button>
+
             <button
               onClick={() => setPage("diseases")}
               style={secondaryButton({
-                background: "rgba(255,255,255,0.08)",
+                background: "rgba(255, 255, 255, 0.08)",
                 color: COLORS.white,
-                borderColor: "rgba(255,255,255,0.25)",
+                borderColor: "rgba(255, 255, 255, 0.25)",
                 fontSize: 15,
-                padding: "13px 22px",
+                padding: "14px 24px",
                 backdropFilter: "blur(4px)",
+                borderRadius: 12,
               })}
             >
               Explore Disease Library
             </button>
+
             <button
               onClick={() => setPage("drugs")}
               style={secondaryButton({
-                background: "rgba(255,255,255,0.08)",
+                background: "rgba(255, 255, 255, 0.08)",
                 color: COLORS.white,
-                borderColor: "rgba(255,255,255,0.25)",
+                borderColor: "rgba(255, 255, 255, 0.25)",
                 fontSize: 15,
-                padding: "13px 22px",
+                padding: "14px 24px",
                 backdropFilter: "blur(4px)",
+                borderRadius: 12,
               })}
             >
               Explore Drug Library
@@ -626,72 +694,311 @@ function HeroPage({ setPage }) {
         </div>
       </section>
 
+      {/* Explore OrphaAI Section */}
       <section
         style={{
           maxWidth: 1140,
-          margin: "-28px auto 0",
-          padding: "0 24px",
+          margin: "-32px auto 0",
+          padding: "0 24px 48px",
           position: "relative",
           zIndex: 10,
         }}
       >
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: COLORS.teal,
+              background: COLORS.tealBg,
+              padding: "4px 12px",
+              borderRadius: "20px",
+              border: `1px solid #BBF7D0`,
+            }}
+          >
+            PLATFORM MODULES
+          </span>
+          <h2 style={{ fontSize: 28, fontWeight: 800, color: COLORS.navy, marginTop: 10, marginBottom: 6 }}>
+            Explore OrphaAI
+          </h2>
+          <p style={{ color: COLORS.gray600, fontSize: 15, margin: 0 }}>
+            Comprehensive computational tools for biomedical target discovery and drug repurposing.
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+            gap: 24,
+          }}
+        >
+          {/* Card 1: Disease Analysis */}
+          <Panel
+            style={{
+              padding: "30px 26px",
+              borderRadius: 16,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              borderTop: `4px solid ${COLORS.tealBright}`,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: COLORS.tealBg,
+                  color: COLORS.teal,
+                  border: `1px solid #BBF7D0`,
+                  display: "grid",
+                  placeItems: "center",
+                  marginBottom: 18,
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                </svg>
+              </div>
+              <h3 style={{ color: COLORS.navy, fontWeight: 800, fontSize: 20, margin: "0 0 10px" }}>
+                Disease Analysis
+              </h3>
+              <p style={{ color: COLORS.gray600, fontSize: 14, lineHeight: 1.6, margin: "0 0 22px" }}>
+                Explore diseases, associated targets, pathways, and biomedical information.
+              </p>
+            </div>
+            <button
+              onClick={() => setPage("diseases")}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: COLORS.teal,
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                padding: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                alignSelf: "flex-start",
+              }}
+            >
+              Explore Disease Library &rarr;
+            </button>
+          </Panel>
+
+          {/* Card 2: Drug Repurposing */}
+          <Panel
+            style={{
+              padding: "30px 26px",
+              borderRadius: 16,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              borderTop: `4px solid ${COLORS.tealBright}`,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: COLORS.tealBg,
+                  color: COLORS.teal,
+                  border: `1px solid #BBF7D0`,
+                  display: "grid",
+                  placeItems: "center",
+                  marginBottom: 18,
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+              </div>
+              <h3 style={{ color: COLORS.navy, fontWeight: 800, fontSize: 20, margin: "0 0 10px" }}>
+                Drug Repurposing
+              </h3>
+              <p style={{ color: COLORS.gray600, fontSize: 14, lineHeight: 1.6, margin: "0 0 22px" }}>
+                Analyze diseases and discover existing drugs with potential repurposing opportunities.
+              </p>
+            </div>
+            <button
+              onClick={() => setPage("predict")}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: COLORS.teal,
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                padding: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                alignSelf: "flex-start",
+              }}
+            >
+              Run Prediction &rarr;
+            </button>
+          </Panel>
+
+          {/* Card 3: Drug–Target Network */}
+          <Panel
+            style={{
+              padding: "30px 26px",
+              borderRadius: 16,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              borderTop: `4px solid ${COLORS.tealBright}`,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: COLORS.tealBg,
+                  color: COLORS.teal,
+                  border: `1px solid #BBF7D0`,
+                  display: "grid",
+                  placeItems: "center",
+                  marginBottom: 18,
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <circle cx="18" cy="5" r="3" />
+                  <circle cx="6" cy="12" r="3" />
+                  <circle cx="18" cy="19" r="3" />
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                </svg>
+              </div>
+              <h3 style={{ color: COLORS.navy, fontWeight: 800, fontSize: 20, margin: "0 0 10px" }}>
+                Drug–Target Network
+              </h3>
+              <p style={{ color: COLORS.gray600, fontSize: 14, lineHeight: 1.6, margin: "0 0 22px" }}>
+                Explore relationships between drugs, molecular targets, and biological interactions.
+              </p>
+            </div>
+            <button
+              onClick={() => setPage("network")}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: COLORS.teal,
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                padding: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                alignSelf: "flex-start",
+              }}
+            >
+              Explore Network &rarr;
+            </button>
+          </Panel>
+        </div>
+      </section>
+
+      {/* How OrphaAI Works Section */}
+      <section
+        style={{
+          maxWidth: 1140,
+          margin: "0 auto",
+          padding: "32px 24px 72px",
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: COLORS.teal,
+              background: COLORS.tealBg,
+              padding: "4px 12px",
+              borderRadius: "20px",
+              border: `1px solid #BBF7D0`,
+            }}
+          >
+            WORKFLOW
+          </span>
+          <h2 style={{ fontSize: 28, fontWeight: 800, color: COLORS.navy, marginTop: 10, marginBottom: 6 }}>
+            How OrphaAI Works
+          </h2>
+          <p style={{ color: COLORS.gray600, fontSize: 15, margin: 0 }}>
+            A structured 4-step pipeline bridging biomedical databases and machine learning.
+          </p>
+        </div>
+
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 16,
+            gap: 20,
           }}
         >
           {[
-            ["Secured Authentication", "JWT + bcrypt protected routes", "security"],
-            ["Live Database Fallback", "PubChem, ChEMBL & Open Targets", "database"],
-            ["Interpretable Machine Learning", "Similarity, network & GNN scoring", "cpu"],
-            ["Exportable PDF Reports", "Instant downloadable research summaries", "file-text"],
-          ].map(([title, desc, icon]) => (
-            <Panel key={title} style={{ padding: "20px 22px", borderRadius: 14 }}>
+            {
+              step: "01",
+              title: "Select Disease",
+              desc: "Choose a disease or indication to analyze.",
+            },
+            {
+              step: "02",
+              title: "Biomedical Data",
+              desc: "Combine relevant biomedical information from available data sources.",
+            },
+            {
+              step: "03",
+              title: "AI Analysis",
+              desc: "Apply the platform's existing computational scoring methods.",
+            },
+            {
+              step: "04",
+              title: "Repurposing Candidates",
+              desc: "Explore ranked drug candidates and supporting information.",
+            },
+          ].map((item) => (
+            <Panel
+              key={item.step}
+              style={{
+                padding: "24px 20px",
+                borderRadius: 16,
+                position: "relative",
+              }}
+            >
               <div
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  background: COLORS.tealBg,
+                  fontSize: 12,
+                  fontWeight: 800,
                   color: COLORS.teal,
-                  display: "grid",
-                  placeItems: "center",
-                  marginBottom: 12,
+                  background: COLORS.tealBg,
+                  border: `1px solid #BBF7D0`,
+                  padding: "4px 10px",
+                  borderRadius: 12,
+                  display: "inline-block",
+                  marginBottom: 14,
                 }}
               >
-                {icon === "security" && (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                    <rect x="3" y="11" width="18" height="11" rx="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                )}
-                {icon === "database" && (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                    <ellipse cx="12" cy="5" rx="9" ry="3" />
-                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-                  </svg>
-                )}
-                {icon === "cpu" && (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                    <rect x="4" y="4" width="16" height="16" rx="2" />
-                    <path d="M9 9h6v6H9z" />
-                    <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3" />
-                  </svg>
-                )}
-                {icon === "file-text" && (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                  </svg>
-                )}
+                Step {item.step}
               </div>
-              <div style={{ color: COLORS.navy, fontWeight: 800, fontSize: 16, marginBottom: 4 }}>{title}</div>
-              <div style={{ color: COLORS.gray600, fontSize: 13, lineHeight: 1.5 }}>{desc}</div>
+              <h4 style={{ color: COLORS.navy, fontWeight: 800, fontSize: 17, margin: "0 0 8px" }}>
+                {item.title}
+              </h4>
+              <p style={{ color: COLORS.gray600, fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>
+                {item.desc}
+              </p>
             </Panel>
           ))}
         </div>
@@ -876,32 +1183,53 @@ function LoginPage({ setPage }) {
 
 function LibrarySearch({ value, onChange, placeholder, onSubmit }) {
   return (
-    <div style={{ display: "flex", gap: 10, margin: "24px 0 28px", flexWrap: "wrap" }}>
-      <div style={{ flex: "1 1 280px", position: "relative" }}>
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && onSubmit()}
-          placeholder={placeholder}
-          style={inputStyle({ width: "100%", paddingLeft: "42px" })}
-        />
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={COLORS.gray300}
-          strokeWidth="2.2"
-          style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+    <Panel style={{ padding: "20px 24px", marginBottom: 28, borderRadius: 16 }}>
+      <label style={{ fontSize: 11, fontWeight: 800, color: COLORS.gray600, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>
+        Search the Drug Library
+      </label>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ flex: "1 1 320px", position: "relative" }}>
+          <input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+            placeholder={placeholder}
+            style={inputStyle({
+              width: "100%",
+              fontSize: 15,
+              padding: "13px 16px 13px 44px",
+              borderRadius: 12,
+              borderColor: COLORS.gray200,
+              boxShadow: "inset 0 1px 2px rgba(15, 23, 42, 0.04)",
+            })}
+          />
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={COLORS.gray400}
+            strokeWidth="2"
+            style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+        </div>
+        <button
+          onClick={onSubmit}
+          style={primaryButton({
+            padding: "14px 28px",
+            fontSize: 15,
+            borderRadius: 12,
+            background: "linear-gradient(135deg, #0F6E56 0%, #0D9488 100%)",
+            boxShadow: "0 6px 18px rgba(15, 110, 86, 0.3)",
+          })}
         >
-          <circle cx="11" cy="11" r="8" />
-          <path d="M21 21l-4.35-4.35" />
-        </svg>
+          Search Library
+        </button>
       </div>
-      <button onClick={onSubmit} style={primaryButton({ padding: "11px 24px" })}>
-        Search Library
-      </button>
-    </div>
+    </Panel>
   );
 }
 
@@ -956,15 +1284,62 @@ function DrugLibrary({ user, setPage, setSearchContext }) {
   if (!user) return <AuthGate user={user} setPage={setPage} />;
 
   return (
-    <PageShell maxWidth={1080}>
-      <div style={{ marginBottom: 8 }}>
-        <h1 style={{ fontSize: 32, color: COLORS.navy }}>Drug Library</h1>
-        <p style={{ color: COLORS.gray600, marginTop: 4 }}>Explore pharmaceutical candidates, molecular targets, and indications.</p>
+    <PageShell maxWidth={1140}>
+      {/* Header section */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.tealBg, color: COLORS.teal, border: `1px solid #BBF7D0`, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.teal }} />
+          PHARMACOLOGICAL REPOSITORY
+        </div>
+        <h1 style={{ fontSize: 34, fontWeight: 800, color: COLORS.navy, margin: "0 0 6px", letterSpacing: "-0.02em" }}>
+          Drug Library
+        </h1>
+        <p style={{ color: COLORS.gray600, marginTop: 0, fontSize: 15, maxWidth: 720, lineHeight: 1.6 }}>
+          Explore approved and investigational drugs, molecular targets, and therapeutic information.
+        </p>
       </div>
-      <LibrarySearch value={query} onChange={setQuery} placeholder="Search Metformin, Sildenafil, Imatinib, aspirin..." onSubmit={() => load(query)} />
-      {loading && <p style={{ color: COLORS.gray600, fontSize: 14 }}>Searching database...</p>}
-      {message && <p style={{ color: COLORS.amber, fontSize: 14 }}>{message}</p>}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+
+      <LibrarySearch
+        value={query}
+        onChange={setQuery}
+        placeholder="Search by drug name... (e.g. Metformin, Sildenafil, Imatinib, Aspirin)"
+        onSubmit={() => load(query)}
+      />
+
+      {loading && (
+        <div style={{ padding: "32px 0", textAlign: "center", color: COLORS.gray600, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.teal} strokeWidth="2.5" style={{ animation: "spin 1s linear infinite" }}>
+            <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+            <path d="M12 2a10 10 0 0 1 10 10" />
+          </svg>
+          Searching drug library...
+        </div>
+      )}
+
+      {message && (
+        <div style={{ background: COLORS.amberBg, color: COLORS.amber, border: `1px solid #FDE68A`, borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 14, fontWeight: 600 }}>
+          {message}
+        </div>
+      )}
+
+      {/* Collection Section Header */}
+      <div style={{ marginBottom: 18 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: COLORS.navy, margin: "0 0 4px" }}>
+          Explore Drugs
+        </h2>
+        <p style={{ color: COLORS.gray600, fontSize: 14, margin: 0 }}>
+          Browse available pharmacological candidates and their associated molecular targets.
+        </p>
+      </div>
+
+      {!loading && drugs.length === 0 && !external && (
+        <Panel style={{ padding: 40, textAlign: "center", borderRadius: 16 }}>
+          <div style={{ color: COLORS.navy, fontSize: 18, fontWeight: 800, marginBottom: 6 }}>No matching drugs found</div>
+          <p style={{ color: COLORS.gray600, fontSize: 14, margin: 0 }}>Try another drug name search query.</p>
+        </Panel>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 20 }}>
         {drugs.map((drug) => (
           <Panel
             key={drug.id}
@@ -973,25 +1348,42 @@ function DrugLibrary({ user, setPage, setSearchContext }) {
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
+              padding: "24px 22px",
+              borderRadius: 16,
+              borderTop: `3px solid ${COLORS.tealBright}`,
+              transition: "transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease",
             }}
           >
             <div onClick={() => openPubChem(drug)}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
-                <h3 style={{ margin: 0, color: COLORS.navy, fontSize: 18, fontWeight: 800 }}>{drug.name}</h3>
-                <Badge tone={drug.status === "approved" ? "teal" : "amber"}>{drug.status}</Badge>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
+                <h3 style={{ margin: 0, color: COLORS.navy, fontSize: 19, fontWeight: 800 }}>{drug.name}</h3>
+                <Badge tone={drug.status === "approved" ? "teal" : "amber"}>{drug.status || "approved"}</Badge>
               </div>
-              <p style={{ color: COLORS.gray600, fontSize: 13, minHeight: 38, lineHeight: 1.5, marginBottom: 14 }}>
-                {drug.indication || "No indication listed"}
+
+              <p style={{ color: COLORS.gray600, fontSize: 13.5, minHeight: 42, lineHeight: 1.55, margin: "0 0 16px" }}>
+                {drug.indication || drug.description || "No indication listed"}
               </p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {(drug.primaryTargets || []).slice(0, 4).map((target) => (
-                  <Badge key={target.symbol} tone="navy">{target.symbol}</Badge>
-                ))}
+
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: COLORS.gray600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+                  PRIMARY TARGETS
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {(drug.primaryTargets || []).length > 0 ? (
+                    (drug.primaryTargets || []).slice(0, 5).map((target) => (
+                      <Badge key={target.symbol} tone="navy">{target.symbol}</Badge>
+                    ))
+                  ) : (
+                    <span style={{ fontSize: 12, color: COLORS.gray300 }}>No primary targets listed</span>
+                  )}
+                  {drug.drugClass && <Badge tone="purple">{drug.drugClass}</Badge>}
+                </div>
               </div>
             </div>
           </Panel>
         ))}
       </div>
+
       {external && <ExternalDrugCard data={external} />}
       {pubchemModal && (
         <Modal title={`${pubchemModal.drug.name} — PubChem Compound Data`} onClose={() => setPubchemModal(null)}>
@@ -1147,33 +1539,112 @@ function DiseaseLibrary({ user, setPage, setSearchContext }) {
   if (!user) return <AuthGate user={user} setPage={setPage} />;
 
   return (
-    <PageShell maxWidth={1080}>
-      <div style={{ marginBottom: 8 }}>
-        <h1 style={{ fontSize: 32, color: COLORS.navy }}>Disease Library</h1>
-        <p style={{ color: COLORS.gray600, marginTop: 4 }}>Explore pathological indications, OMIM datasets, and target gene associations.</p>
+    <PageShell maxWidth={1140}>
+      {/* Header section */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.tealBg, color: COLORS.teal, border: `1px solid #BBF7D0`, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.teal }} />
+          PATHOLOGICAL &amp; GENETIC REPOSITORY
+        </div>
+        <h1 style={{ fontSize: 34, fontWeight: 800, color: COLORS.navy, margin: "0 0 6px", letterSpacing: "-0.02em" }}>
+          Disease Library
+        </h1>
+        <p style={{ color: COLORS.gray600, marginTop: 0, fontSize: 15, maxWidth: 720, lineHeight: 1.6 }}>
+          Explore diseases, biological information, and therapeutic research context.
+        </p>
       </div>
-      <LibrarySearch value={query} onChange={setQuery} placeholder="Search Alzheimer's, ALS, cancer, hypertension..." onSubmit={() => load(query)} />
-      {loading && <p style={{ color: COLORS.gray600, fontSize: 14 }}>Searching database...</p>}
-      {message && <p style={{ color: COLORS.amber, fontSize: 14 }}>{message}</p>}
-      <div style={{ display: "grid", gap: 14 }}>
+
+      <LibrarySearch
+        value={query}
+        onChange={setQuery}
+        placeholder="Search by disease name... (e.g. Alzheimer's, ALS, Cancer, Hypertension)"
+        onSubmit={() => load(query)}
+      />
+
+      {loading && (
+        <div style={{ padding: "32px 0", textAlign: "center", color: COLORS.gray600, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.teal} strokeWidth="2.5" style={{ animation: "spin 1s linear infinite" }}>
+            <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+            <path d="M12 2a10 10 0 0 1 10 10" />
+          </svg>
+          Searching disease library...
+        </div>
+      )}
+
+      {message && (
+        <div style={{ background: COLORS.amberBg, color: COLORS.amber, border: `1px solid #FDE68A`, borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 14, fontWeight: 600 }}>
+          {message}
+        </div>
+      )}
+
+      {/* Collection Section Header */}
+      <div style={{ marginBottom: 18 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: COLORS.navy, margin: "0 0 4px" }}>
+          Explore Diseases
+        </h2>
+        <p style={{ color: COLORS.gray600, fontSize: 14, margin: 0 }}>
+          Browse diseases and indications available for biomedical analysis.
+        </p>
+      </div>
+
+      {!loading && diseases.length === 0 && !external && (
+        <Panel style={{ padding: 40, textAlign: "center", borderRadius: 16 }}>
+          <div style={{ color: COLORS.navy, fontSize: 18, fontWeight: 800, marginBottom: 6 }}>No matching diseases found</div>
+          <p style={{ color: COLORS.gray600, fontSize: 14, margin: 0 }}>Try another disease name search query.</p>
+        </Panel>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 20 }}>
         {diseases.map((disease) => (
-          <Panel key={disease.id} style={{ cursor: "pointer" }}>
-            <div onClick={() => openKegg(disease)} style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-              <div style={{ minWidth: 54, height: 54, borderRadius: 12, background: COLORS.tealBg, color: COLORS.teal, border: `1px solid ${COLORS.tealBorder}`, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 16 }}>
-                {disease.associatedGenes?.length || 0}
-              </div>
-              <div style={{ flex: 1 }}>
-                <h3 style={{ margin: "0 0 6px", color: COLORS.navy, fontSize: 18, fontWeight: 800 }}>{disease.name}</h3>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <Badge tone="purple">{disease.diseaseType || "untyped"}</Badge>
-                  {disease.isRare && <Badge tone="amber">rare</Badge>}
-                  {disease.omimId && <Badge tone="navy">OMIM {disease.omimId}</Badge>}
+          <Panel
+            key={disease.id}
+            style={{
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              padding: "24px 22px",
+              borderRadius: 16,
+              borderTop: `3px solid ${COLORS.tealBright}`,
+              transition: "transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease",
+            }}
+          >
+            <div onClick={() => openKegg(disease)}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 14 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.tealBg, color: COLORS.teal, border: `1px solid #BBF7D0`, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 15, flex: "0 0 44px" }}>
+                  {disease.associatedGenes?.length || 0}
                 </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={{ margin: "0 0 6px", color: COLORS.navy, fontSize: 19, fontWeight: 800, lineHeight: 1.3 }}>{disease.name}</h3>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <Badge tone="purple">{disease.diseaseType || "untyped"}</Badge>
+                    {disease.isRare && <Badge tone="amber">rare</Badge>}
+                    {disease.omimId && <Badge tone="navy">OMIM {disease.omimId}</Badge>}
+                  </div>
+                </div>
+              </div>
+
+              {(disease.associatedGenes || []).length > 0 && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${COLORS.gray100}` }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: COLORS.gray600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+                    ASSOCIATED GENE TARGETS
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {(disease.associatedGenes || []).slice(0, 5).map((g) => (
+                      <Badge key={g.symbol}>{g.symbol}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginTop: 18, color: COLORS.teal, fontWeight: 700, fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                Explore KEGG Pathways &rarr;
               </div>
             </div>
           </Panel>
         ))}
       </div>
+
       {external && <ExternalDiseaseCard data={external} />}
       {keggModal && (
         <Modal title={`${keggModal.disease.name} — KEGG Pathway Information`} onClose={() => setKeggModal(null)}>
@@ -1437,54 +1908,177 @@ function PredictPage({ user, setPage }) {
   if (!user) return <AuthGate user={user} setPage={setPage} />;
 
   return (
-    <PageShell maxWidth={980}>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 32, color: COLORS.navy, margin: 0 }}>Drug Repurposing Predictor</h1>
-        <p style={{ color: COLORS.gray600, marginTop: 4, fontSize: 15 }}>
-          Run AI ensemble predictions (Molecular Similarity + Target Overlap + GNN Proxy) for any disease.
+    <PageShell maxWidth={1040}>
+      {/* Header section */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.tealBg, color: COLORS.teal, border: `1px solid #BBF7D0`, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.teal }} />
+          AI DISCOVERY WORKSPACE
+        </div>
+        <h1 style={{ fontSize: 34, fontWeight: 800, color: COLORS.navy, margin: "0 0 8px", letterSpacing: "-0.02em" }}>
+          Drug Repurposing Predictor
+        </h1>
+        <p style={{ color: COLORS.gray600, margin: 0, fontSize: 15, maxWidth: 720, lineHeight: 1.6 }}>
+          Analyze diseases or clinical indications to generate computational drug repurposing candidates backed by molecular fingerprints, target interaction networks, and AI scoring.
         </p>
       </div>
 
-      <Panel style={{ padding: 28 }}>
-        <label style={{ fontSize: 13, fontWeight: 800, color: COLORS.navy, textTransform: "uppercase", letterSpacing: "0.04em", display: "block" }}>
-          Target Disease or Indication
-        </label>
-        <div style={{ display: "flex", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
-          <input
-            value={disease}
-            onChange={(e) => setDisease(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && runPrediction()}
-            placeholder="e.g. Alzheimer's Disease, ALS, Hypertension, Epilepsy..."
-            style={inputStyle({ flex: "1 1 320px", fontSize: 15, padding: "12px 16px" })}
-          />
-          <button onClick={runPrediction} disabled={loading} style={primaryButton({ opacity: loading ? 0.65 : 1, padding: "12px 26px", fontSize: 15 })}>
-            {loading ? "Analyzing Target..." : "Run Prediction"}
+      {/* Main Prediction Workspace Card */}
+      <Panel style={{ padding: "32px 28px", borderRadius: 18, borderTop: `4px solid ${COLORS.tealBright}`, boxShadow: "0 8px 30px rgba(15, 23, 42, 0.06)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <label style={{ fontSize: 13, fontWeight: 800, color: COLORS.navy, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            TARGET DISEASE OR INDICATION
+          </label>
+          <span style={{ fontSize: 12, color: COLORS.gray600 }}>Enter a disease or condition to analyze</span>
+        </div>
+
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ flex: "1 1 340px", position: "relative" }}>
+            <input
+              value={disease}
+              onChange={(e) => setDisease(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && runPrediction()}
+              placeholder="Search or enter a disease / indication... (e.g. Alzheimer's Disease, ALS, Hypertension)"
+              style={inputStyle({
+                width: "100%",
+                fontSize: 15,
+                padding: "13px 16px 13px 44px",
+                borderRadius: 12,
+                borderColor: COLORS.gray200,
+                boxShadow: "inset 0 1px 2px rgba(15, 23, 42, 0.04)",
+              })}
+            />
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={COLORS.gray400}
+              strokeWidth="2"
+              style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+          </div>
+
+          <button
+            onClick={runPrediction}
+            disabled={loading}
+            style={primaryButton({
+              opacity: loading ? 0.7 : 1,
+              padding: "14px 28px",
+              fontSize: 15,
+              borderRadius: 12,
+              background: "linear-gradient(135deg, #0F6E56 0%, #0D9488 100%)",
+              boxShadow: "0 6px 18px rgba(15, 110, 86, 0.3)",
+              minWidth: 170,
+            })}
+          >
+            {loading ? (
+              <>
+                <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "spin 1s linear infinite" }}>
+                  <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                  <path d="M12 2a10 10 0 0 1 10 10" />
+                </svg>
+                Analyzing Target...
+              </>
+            ) : (
+              <>
+                Run Prediction &rarr;
+              </>
+            )}
           </button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.gray600, textTransform: "uppercase" }}>Samples:</span>
+
+        {/* Sample Diseases Quick-Start Chips */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.gray600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Try an example:
+          </span>
           {["Alzheimer's Disease", "Amyotrophic Lateral Sclerosis", "Epilepsy", "Breast Cancer"].map((x) => (
-            <button key={x} onClick={() => setDisease(x)} style={secondaryButton({ padding: "5px 11px", fontSize: 12, borderRadius: 20 })}>
+            <button
+              key={x}
+              onClick={() => setDisease(x)}
+              style={secondaryButton({
+                padding: "6px 14px",
+                fontSize: 12.5,
+                borderRadius: 20,
+                borderColor: COLORS.gray200,
+                background: disease === x ? COLORS.tealBg : COLORS.white,
+                color: disease === x ? COLORS.teal : COLORS.gray800,
+                fontWeight: disease === x ? 800 : 600,
+              })}
+            >
               {x}
             </button>
           ))}
         </div>
       </Panel>
 
+      {/* Error Banner if any */}
       {error && (
-        <div style={{ background: COLORS.coralBg, color: COLORS.coral, border: "1px solid #FECDD3", borderRadius: 10, padding: 14, marginTop: 18, fontSize: 14 }}>
+        <div style={{ background: COLORS.coralBg, color: COLORS.coral, border: "1px solid #FECDD3", borderRadius: 12, padding: "14px 18px", marginTop: 20, fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 10 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           {error}
         </div>
       )}
 
+      {/* How OrphaAI Analyzes a Disease Section (Explanatory flow UI) */}
+      <section style={{ marginTop: 36, marginBottom: 36 }}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: COLORS.navy, margin: "0 0 6px" }}>
+            How OrphaAI analyzes a disease
+          </h2>
+          <p style={{ color: COLORS.gray600, fontSize: 13.5, margin: 0 }}>
+            Structured ensemble workflow for target matching and drug repurposing.
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+          {[
+            { step: "01", title: "Disease / Indication", desc: "Select target indication" },
+            { step: "02", title: "Biomedical Data", desc: "Cross-reference target genes & OMIM" },
+            { step: "03", title: "AI Analysis", desc: "Similarity & network propagation" },
+            { step: "04", title: "Candidate Scoring", desc: "Ensemble multi-score calculation" },
+            { step: "05", title: "Repurposing Results", desc: "Ranked candidates & PDF report" },
+          ].map((item) => (
+            <Panel key={item.step} style={{ padding: "16px 14px", borderRadius: 12, textAlign: "center", background: COLORS.white }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: COLORS.teal, background: COLORS.tealBg, border: `1px solid #BBF7D0`, padding: "2px 8px", borderRadius: 8, display: "inline-block", marginBottom: 8 }}>
+                {item.step}
+              </span>
+              <div style={{ color: COLORS.navy, fontWeight: 800, fontSize: 13.5, marginBottom: 4 }}>{item.title}</div>
+              <div style={{ color: COLORS.gray600, fontSize: 11.5, lineHeight: 1.4 }}>{item.desc}</div>
+            </Panel>
+          ))}
+        </div>
+      </section>
+
+      {/* Ensemble Methodology Summary Badges */}
+      <section style={{ marginBottom: 36, padding: "18px 24px", background: COLORS.navyBg, borderRadius: 14, border: `1px solid ${COLORS.gray200}` }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.navy, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+          AI Ensemble Methodology Components
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Badge tone="teal">Molecular Similarity (Morgan Fingerprints &amp; Tanimoto)</Badge>
+          <Badge tone="purple">Target/Network Evidence (ChEMBL &amp; STITCH)</Badge>
+          <Badge tone="cyan">GNN-based Graph Scoring (GraphSAGE Model)</Badge>
+        </div>
+      </section>
+
+      {/* Results Area */}
       {(currentTreatments.length > 0 || results.length > 0) && (
-        <section style={{ marginTop: 32 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+        <section style={{ marginTop: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
             <div>
-              <h2 style={{ color: COLORS.navy, margin: 0, fontSize: 24 }}>Prediction Results for {meta?.disease?.name || disease}</h2>
-              <p style={{ color: COLORS.gray600, fontSize: 13, marginTop: 2 }}>Model: Ensemble (Similarity + Target Overlap + GNN proxy)</p>
+              <h2 style={{ color: COLORS.navy, margin: 0, fontSize: 24, fontWeight: 800 }}>
+                Prediction Results for {meta?.disease?.name || disease}
+              </h2>
+              <p style={{ color: COLORS.gray600, fontSize: 13, marginTop: 4 }}>
+                Model: Ensemble (Similarity + Target Overlap + GNN proxy)
+              </p>
             </div>
-            <button onClick={downloadReport} style={secondaryButton({ color: COLORS.teal, borderColor: COLORS.teal, padding: "10px 18px" })}>
+            <button onClick={downloadReport} style={primaryButton({ background: COLORS.teal, padding: "10px 18px", fontSize: 13.5, borderRadius: 10 })}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
@@ -1495,15 +2089,18 @@ function PredictPage({ user, setPage }) {
           </div>
 
           {downloadStatus && (
-            <div style={{ color: downloadStatus.startsWith("Error:") ? COLORS.coral : COLORS.teal, fontSize: 13, marginBottom: 16, overflowWrap: "anywhere", fontWeight: 600 }}>
+            <div style={{ color: downloadStatus.startsWith("Error:") ? COLORS.coral : COLORS.teal, fontSize: 13, marginBottom: 16, fontWeight: 600, padding: "10px 14px", background: downloadStatus.startsWith("Error:") ? COLORS.coralBg : COLORS.tealBg, borderRadius: 8, border: `1px solid ${downloadStatus.startsWith("Error:") ? "#FECDD3" : "#BBF7D0"}` }}>
               {downloadStatus}
             </div>
           )}
 
-          <Panel style={{ marginBottom: 24, padding: 24 }}>
-            <h3 style={{ color: COLORS.navy, marginTop: 0, marginBottom: 16, fontSize: 18 }}>Currently Approved / Standard Treatments</h3>
+          {/* Currently Approved Treatments */}
+          <Panel style={{ marginBottom: 28, padding: 24, borderRadius: 16 }}>
+            <h3 style={{ color: COLORS.navy, marginTop: 0, marginBottom: 16, fontSize: 18, fontWeight: 800 }}>
+              Currently Approved / Standard Treatments
+            </h3>
             {currentTreatments.length === 0 ? (
-              <p style={{ color: COLORS.gray600, fontSize: 14 }}>No standard-treatment mapping found for this disease in the local curated set.</p>
+              <p style={{ color: COLORS.gray600, fontSize: 14, margin: 0 }}>No standard-treatment mapping found for this disease in the local curated set.</p>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
                 {currentTreatments.map((item) => (
@@ -1513,7 +2110,10 @@ function PredictPage({ user, setPage }) {
             )}
           </Panel>
 
-          <h3 style={{ color: COLORS.navy, fontSize: 20, marginBottom: 14 }}>Predicted Repurposition Candidates</h3>
+          {/* Repurposing Candidates List */}
+          <h3 style={{ color: COLORS.navy, fontSize: 20, fontWeight: 800, marginBottom: 16 }}>
+            Predicted Repurposition Candidates
+          </h3>
           {results.length === 0 ? (
             <p style={{ color: COLORS.gray600, fontSize: 14 }}>No repurposing candidates passed the score threshold.</p>
           ) : (
@@ -1551,15 +2151,14 @@ function CurrentTreatmentRow({ item }) {
 function PredictionRow({ pred }) {
   const drug = pred.drug || {};
   const sourceLabel = pred.source === "chembl-api" ? "ChEMBL API" : pred.source === "open-targets-api" ? "Open Targets API" : "Local fallback";
-  const scorePct = Math.round((pred.scores?.ensemble || pred.confidencePct || 75));
 
   return (
-    <Panel style={{ marginBottom: 14, padding: 22 }}>
+    <Panel style={{ marginBottom: 16, padding: 24, borderRadius: 16 }}>
       <div style={{ display: "flex", gap: 18, alignItems: "flex-start", minWidth: 0 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 12, background: COLORS.tealBg, color: COLORS.teal, border: `1px solid ${COLORS.tealBorder}`, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 16, flex: "0 0 52px" }}>
+        <div style={{ width: 52, height: 52, borderRadius: 12, background: COLORS.tealBg, color: COLORS.teal, border: `1px solid #BBF7D0`, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 16, flex: "0 0 52px" }}>
           #{pred.rank || 1}
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <h3 style={{ margin: 0, color: COLORS.navy, fontSize: 20, fontWeight: 800 }}>{drug.name}</h3>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -1648,44 +2247,82 @@ function InteractionNetworkPage({ user, setPage }) {
   if (!user) return <AuthGate user={user} setPage={setPage} />;
 
   return (
-    <PageShell maxWidth={1200}>
-      <div style={{ marginBottom: 16 }}>
-        <h1 className="network-title" style={{ fontSize: 32, color: COLORS.navy, margin: 0 }}>
-          Drug-Target Interaction Network
+    <PageShell maxWidth={1280}>
+      {/* Page Introduction Header */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.tealBg, color: COLORS.teal, border: `1px solid #BBF7D0`, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.teal }} />
+          BIOLOGICAL TARGET DISCOVERY
+        </div>
+        <h1 className="network-title" style={{ fontSize: 34, fontWeight: 800, color: COLORS.navy, margin: "0 0 6px", letterSpacing: "-0.02em" }}>
+          Drug–Target Interaction Network
         </h1>
-        <p style={{ color: COLORS.gray600, marginTop: 4, fontSize: 15 }}>
-          Interactive biological target graph showing binding affinities, pathways, and interaction types.
+        <p style={{ color: COLORS.gray600, marginTop: 0, fontSize: 15, maxWidth: 720, lineHeight: 1.6 }}>
+          Explore relationships between drugs, biological targets, pathways, and interaction types in an interactive biological target workspace.
         </p>
       </div>
 
-      <Panel style={{ overflow: "hidden", padding: 24 }}>
-        <div className="network-controls" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
-          <div style={{ flex: "1 1 280px", minWidth: 0 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: COLORS.gray600, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Select Drug</label>
-            <select value={drugId} onChange={(e) => setDrugId(e.target.value)} style={inputStyle({ width: "100%", minHeight: 44, fontWeight: 600 })}>
+      {/* Analysis Toolbar */}
+      <Panel style={{ padding: "20px 24px", marginBottom: 24, borderRadius: 16 }}>
+        <div className="network-controls" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 300px", minWidth: 0 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: COLORS.gray600, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>
+              Select Drug to Analyze
+            </label>
+            <select
+              value={drugId}
+              onChange={(e) => setDrugId(e.target.value)}
+              style={inputStyle({
+                width: "100%",
+                minHeight: 44,
+                fontWeight: 700,
+                fontSize: 14.5,
+                borderColor: COLORS.gray200,
+                borderRadius: 10,
+                cursor: "pointer",
+              })}
+            >
               {drugs.map((drug) => (
                 <option key={drug.id} value={drug.id}>
-                  {drug.name}
+                  {drug.name} {drug.drugClass ? `(${drug.drugClass})` : ""}
                 </option>
               ))}
             </select>
           </div>
-          <div className="network-mode-controls" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {["radial", "force", "hierarchical"].map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setLayoutMode(mode)}
-                style={layoutMode === mode ? primaryButton({ padding: "8px 16px", fontSize: 13 }) : secondaryButton({ padding: "8px 16px", fontSize: 13 })}
-              >
-                {mode === "force" ? "Force-directed" : mode[0].toUpperCase() + mode.slice(1)}
-              </button>
-            ))}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: COLORS.gray600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Layout View
+            </label>
+            <div className="network-mode-controls" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {["radial", "force", "hierarchical"].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setLayoutMode(mode)}
+                  style={
+                    layoutMode === mode
+                      ? primaryButton({ padding: "9px 18px", fontSize: 13, borderRadius: 8 })
+                      : secondaryButton({ padding: "9px 18px", fontSize: 13, borderRadius: 8 })
+                  }
+                >
+                  {mode === "force" ? "Force-directed" : mode[0].toUpperCase() + mode.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+      </Panel>
 
-        {message && <p style={{ color: COLORS.amber, fontSize: 14 }}>{message}</p>}
+      {message && (
+        <div style={{ background: COLORS.amberBg, color: COLORS.amber, border: `1px solid #FDE68A`, borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 14, fontWeight: 600 }}>
+          {message}
+        </div>
+      )}
 
-        <div className="network-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 300px)", gap: 20, alignItems: "stretch", minWidth: 0 }}>
+      {/* Main Two-Column Network Workspace */}
+      <div className="network-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 340px)", gap: 24, alignItems: "stretch", minWidth: 0 }}>
+        {/* Left Column: Prominent Interactive Graph Canvas */}
+        <Panel style={{ overflow: "hidden", padding: 20, display: "flex", flexDirection: "column", justifyContent: "space-between", borderRadius: 18 }}>
           <div
             ref={(node) => {
               networkRef.current = node;
@@ -1695,14 +2332,14 @@ function InteractionNetworkPage({ user, setPage }) {
               background: "linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%)",
               border: `1px solid ${COLORS.gray100}`,
               borderRadius: 14,
-              minHeight: 440,
+              minHeight: 520,
               display: "grid",
               placeItems: "center",
               overflow: "hidden",
               minWidth: 0,
             }}
           >
-            <svg viewBox="0 0 760 420" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", maxWidth: 820, height: "auto", display: "block" }}>
+            <svg viewBox="0 0 760 420" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", maxWidth: 880, height: "auto", display: "block" }}>
               <defs>
                 <filter id="softGlow">
                   <feGaussianBlur stdDeviation="6" result="blur" />
@@ -1768,10 +2405,12 @@ function InteractionNetworkPage({ user, setPage }) {
             </svg>
             {tooltip && <NetworkTooltip tooltip={tooltip} />}
           </div>
-          <NetworkSidePanel drug={network?.drug || selectedDrug} layout={layout} selectedTarget={selectedTarget} drugs={drugs} />
-        </div>
-        <NetworkLegend />
-      </Panel>
+          <NetworkLegend />
+        </Panel>
+
+        {/* Right Column: Information Sidebar */}
+        <NetworkSidePanel drug={network?.drug || selectedDrug} layout={layout} selectedTarget={selectedTarget} drugs={drugs} />
+      </div>
     </PageShell>
   );
 }
@@ -1916,48 +2555,70 @@ function NetworkSidePanel({ drug, layout, selectedTarget, drugs }) {
   const status = drug?.status || "Approved";
   const drugClass = drug?.drugClass || drug?.drug_class || "Therapeutic";
   const similar = selectedTarget ? drugs.filter((item) => item.name !== name).slice(0, 4) : [];
+
   return (
-    <aside style={{ display: "grid", gap: 14, alignContent: "start" }}>
-      <Panel style={{ padding: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: COLORS.purple, color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 15 }}>{initials(name)}</div>
+    <aside style={{ display: "grid", gap: 16, alignContent: "start" }}>
+      {/* Card 1: Selected Drug Summary */}
+      <Panel style={{ padding: 20, borderRadius: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: COLORS.gray600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+          Selected Drug
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ width: 46, height: 46, borderRadius: "50%", background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)", color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 16, boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)" }}>
+            {initials(name)}
+          </div>
           <div>
-            <div style={{ color: COLORS.navy, fontWeight: 800, fontSize: 15 }}>{name}</div>
-            <div style={{ color: COLORS.gray600, fontSize: 12 }}>{drugClass} · {status}</div>
+            <div style={{ color: COLORS.navy, fontWeight: 800, fontSize: 18 }}>{name}</div>
+            <div style={{ color: COLORS.gray600, fontSize: 13, marginTop: 2 }}>{drugClass} &middot; {status}</div>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 14 }}>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 18 }}>
           <Stat label="Primary" value={layout.primaryCount} />
           <Stat label="Secondary" value={layout.secondaryCount} />
           <Stat label="Disease links" value={layout.diseaseLinkCount} />
         </div>
       </Panel>
-      <Panel style={{ padding: 16 }}>
-        <h3 style={{ margin: "0 0 12px", color: COLORS.navy, fontSize: 15 }}>Interaction Types</h3>
-        {["inhibitor", "activator", "allosteric"].map((type) => <InteractionLegendRow key={type} type={type} />)}
+
+      {/* Card 2: Interaction Types Breakdown */}
+      <Panel style={{ padding: 20, borderRadius: 16 }}>
+        <h3 style={{ margin: "0 0 14px", color: COLORS.navy, fontSize: 15, fontWeight: 800 }}>Interaction Types</h3>
+        {["inhibitor", "activator", "allosteric"].map((type) => (
+          <InteractionLegendRow key={type} type={type} />
+        ))}
       </Panel>
-      <Panel style={{ padding: 16 }}>
-        <h3 style={{ margin: "0 0 12px", color: COLORS.navy, fontSize: 15 }}>Selected Node</h3>
+
+      {/* Card 3: Target Inspector (Selected Node) */}
+      <Panel style={{ padding: 20, borderRadius: 16 }}>
+        <h3 style={{ margin: "0 0 14px", color: COLORS.navy, fontSize: 15, fontWeight: 800 }}>Target Inspector</h3>
         {!selectedTarget ? (
-          <p style={{ margin: 0, color: COLORS.gray600, fontSize: 13 }}>Click a target node to inspect details</p>
+          <div style={{ background: COLORS.gray50, border: `1px solid ${COLORS.gray100}`, borderRadius: 10, padding: 14, textAlign: "center" }}>
+            <p style={{ margin: 0, color: COLORS.gray600, fontSize: 13, lineHeight: 1.5 }}>
+              Click a target node in the network graph to inspect its binding affinity, evidence, and pathway details.
+            </p>
+          </div>
         ) : (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-              <strong style={{ color: COLORS.navy, fontSize: 15 }}>{selectedTarget.label}</strong>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", marginBottom: 14 }}>
+              <strong style={{ color: COLORS.navy, fontSize: 17, fontWeight: 800 }}>{selectedTarget.label}</strong>
               <InteractionBadge type={selectedTarget.interactionType} />
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div style={{ display: "grid", gap: 8 }}>
               <DetailRow label="Binding affinity" value={selectedTarget.ki || "N/A"} />
-              <DetailRow label="Evidence" value={selectedTarget.evidenceSource} />
+              <DetailRow label="Evidence source" value={selectedTarget.evidenceSource} />
               <DetailRow label="Disease links" value={selectedTarget.diseaseLinkCount} />
             </div>
-            <div style={{ marginTop: 14, color: COLORS.gray600, fontSize: 12, fontWeight: 800 }}>Similar drugs</div>
+            <div style={{ marginTop: 16, color: COLORS.gray600, fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Similar Target Drugs
+            </div>
             {similar.length ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                {similar.map((drug) => <Badge key={drug.id} tone="navy">{drug.name}</Badge>)}
+                {similar.map((drug) => (
+                  <Badge key={drug.id} tone="navy">{drug.name}</Badge>
+                ))}
               </div>
             ) : (
-              <p style={{ color: COLORS.gray600, fontSize: 12, marginTop: 4 }}>No other drugs found for this target</p>
+              <p style={{ color: COLORS.gray600, fontSize: 12, marginTop: 6, margin: 0 }}>No other drugs found for this target</p>
             )}
           </div>
         )}
