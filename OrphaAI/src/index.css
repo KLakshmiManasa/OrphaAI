@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   --brand-navy: #06182B;
   --brand-navy-mid: #0C2B4B;
@@ -125,4 +129,27 @@ input, select, textarea {
   .orpha-page {
     padding: 24px 14px !important;
   }
+}
+
+/* Hide default Tars launcher button while keeping modal available */
+#tars-widget-fab,
+div[id*="tars-widget-fab"],
+.tars-fab-button {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Capsule Float Idle Keyframe */
+@keyframes capsuleFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-capsule-float {
+  animation: capsuleFloat 3.2s ease-in-out infinite;
 }

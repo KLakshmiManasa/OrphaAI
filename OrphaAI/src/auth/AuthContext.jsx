@@ -14,7 +14,7 @@ import { supabase } from "../supabaseClient";
 // ---------------------------------------------------------------------------
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
-  "https://orphaai-backend-nebu.onrender.com/api/v1";
+  "http://localhost:5000/api/v1";
 
 const FALLBACK_API_BASE = "http://localhost:5000/api/v1";
 
