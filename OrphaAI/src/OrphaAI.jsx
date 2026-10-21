@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, Component } from "react";
+import { createPortal } from "react-dom";
 import { ORPHAAI_LOGO_ALT, ORPHAAI_LOGO_SRC } from "./assets/logo";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import { useAuth } from "./auth/AuthContext";
@@ -7,8 +8,8 @@ import { downloadPdfReport, uniqueReportFilename } from "./services/pdfExportSer
 import { usePredictionContext } from "./context/PredictionContext";
 import EvidenceDossierModal from "./components/EvidenceDossierModal";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api/v1";
-const FALLBACK_API_BASE = "http://localhost:5000/api/v1";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://orphaai-backend-nebu.onrender.com/api/v1";
+const FALLBACK_API_BASE = "https://orphaai-backend-nebu.onrender.com/api/v1";
 
 const COLORS = {
   navy: "#06182B",
@@ -248,54 +249,43 @@ function PageShell({ children, maxWidth = 1080, style }) {
 }
 
 function Modal({ title, onClose, children }) {
-  return (
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, []);
+
+  const modalContent = (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(6, 24, 43, 0.55)",
-        backdropFilter: "blur(6px)",
-        zIndex: 50,
-        display: "grid",
-        placeItems: "center",
-        padding: 20,
-        animation: "fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-      }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
+      onClick={onClose}
     >
       <div
-        style={{
-          background: COLORS.white,
-          borderRadius: 16,
-          border: `1px solid ${COLORS.gray100}`,
-          width: "min(920px, 96vw)",
-          maxHeight: "88vh",
-          overflow: "auto",
-          boxShadow: "0 24px 60px -12px rgba(6, 24, 43, 0.3)",
-        }}
+        className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            background: COLORS.white,
-            borderBottom: `1px solid ${COLORS.gray100}`,
-            padding: "18px 24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            zIndex: 10,
-          }}
-        >
-          <h2 style={{ margin: 0, color: COLORS.navy, fontSize: 19, fontWeight: 800 }}>{title}</h2>
-          <button onClick={onClose} style={secondaryButton({ padding: "7px 14px", fontSize: 13 })}>
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900 m-0 tracking-tight">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200 cursor-pointer"
+          >
             Close
           </button>
         </div>
-        <div style={{ padding: 24 }}>{children}</div>
+        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+          {children}
+        </div>
       </div>
     </div>
   );
+
+  if (typeof document !== "undefined") {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
 }
 
 function AuthGate({ user, setPage }) {
@@ -1187,7 +1177,7 @@ function LoginPage({ setPage }) {
           <span style={{ height: 1, background: COLORS.gray100, flex: 1 }} />
         </div>
 
-        <GoogleSignInButton disabled={loading} onError={setError} />
+        <GoogleSignInButton disabled={loading} onError={setError} onClose={() => setPage("home")} />
 
         <div style={{ textAlign: "center", marginTop: 18, padding: "10px", background: COLORS.gray50, borderRadius: 8, fontSize: 12, color: COLORS.gray600 }}>
           <b>Demo Account:</b> demo@orphaai.com / Demo1234

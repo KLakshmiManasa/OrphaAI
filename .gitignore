@@ -22,6 +22,10 @@ backend/backend/orphaai.db
 scratch/
 .agents/
 
+# Android build artifacts
+*.apk
+*.aab
+
 # Logs
 *.log
 logs/

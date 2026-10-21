@@ -10,7 +10,7 @@
 """
 
 # ─── Standard library ────────────────────────────────────────────
-import os, re, json, math, uuid, hashlib, random, sys, time, difflib
+import os, re, json, math, uuid, hashlib, random, sys, time, difflib, base64
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 
@@ -351,9 +351,13 @@ def jwt_user_id():
         return None
 
 def make_tokens(user: User) -> dict:
+    access = create_access_token(identity=str(user.id))
+    refresh = create_refresh_token(identity=str(user.id))
     return dict(
-        accessToken=create_access_token(identity=str(user.id)),
-        refreshToken=create_refresh_token(identity=str(user.id)),
+        accessToken=access,
+        refreshToken=refresh,
+        access_token=access,
+        refresh_token=refresh,
     )
 
 def err(msg, code=400):

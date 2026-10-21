@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 const COLORS = {
   navy: "#06182B",
@@ -25,6 +26,14 @@ const COLORS = {
 
 export default function EvidenceDossierModal({ isOpen, onClose, candidate, diseaseName }) {
   const [activeTab, setActiveTab] = useState("moa");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
 
   if (!isOpen || !candidate) return null;
 
@@ -56,7 +65,7 @@ export default function EvidenceDossierModal({ isOpen, onClose, candidate, disea
   const validNctId = isValidNct ? rawNctId.trim().toUpperCase() : null;
   const dataSource = candidate.data_source || candidate.dataSource || "Broad Repurposing Hub v2025 / repoDB";
 
-  return (
+  const modalContent = (
     <div
       style={{
         position: "fixed",
@@ -504,6 +513,11 @@ export default function EvidenceDossierModal({ isOpen, onClose, candidate, disea
       </div>
     </div>
   );
+
+  if (typeof document !== "undefined") {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
 }
 
 function MetricCard({ label, value, threshold }) {

@@ -11,7 +11,9 @@ export default function App() {
     if (document.getElementById('hellotars-script')) return;
 
     window.tarsSettings = {
-      convid: "s_oIBs"
+      convid: "s_oIBs",
+      branding: false,
+      hide_branding: true,
     };
 
     const script = document.createElement('script');

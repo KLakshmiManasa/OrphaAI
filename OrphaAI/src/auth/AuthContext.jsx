@@ -14,9 +14,9 @@ import { supabase } from "../supabaseClient";
 // ---------------------------------------------------------------------------
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
-  "http://localhost:5000/api/v1";
+  "https://orphaai-backend-nebu.onrender.com/api/v1";
 
-const FALLBACK_API_BASE = "http://localhost:5000/api/v1";
+const FALLBACK_API_BASE = "https://orphaai-backend-nebu.onrender.com/api/v1";
 
 const ACCESS_TOKEN_KEY  = "orphaai_access_token";
 const REFRESH_TOKEN_KEY = "orphaai_refresh_token";
@@ -54,14 +54,25 @@ function storedAccessToken() {
 }
 
 function storeFlaskSession(payload) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, payload.accessToken);
-  if (payload.refreshToken)
-    localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
+  const token = payload.accessToken || payload.access_token;
+  if (token) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    localStorage.setItem("orphaai_token", token);
+  }
+  const refresh = payload.refreshToken || payload.refresh_token;
+  if (refresh) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+  }
+  if (payload.user) {
+    localStorage.setItem("orphaai_user", JSON.stringify(payload.user));
+  }
 }
 
 function clearFlaskSession() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem("orphaai_token");
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem("orphaai_user");
 }
 
 function isOAuthRedirect() {
@@ -482,12 +493,22 @@ export function AuthProvider({ children }) {
     restoreSession();
   }, [restoreSession]);
 
+  const setIsLoggedIn = useCallback((val) => {
+    if (!val) {
+      clearFlaskSession();
+      setUser(null);
+    }
+  }, []);
+
   // -------------------------------------------------------------------------
   // Context value
   // -------------------------------------------------------------------------
   const value = useMemo(
     () => ({
       user,
+      isLoggedIn: Boolean(user),
+      setIsLoggedIn,
+      setUser,
       initializing,
       error,
       loginWithPassword,
@@ -508,6 +529,7 @@ export function AuthProvider({ children }) {
       logout,
       registerWithPassword,
       restoreSession,
+      setIsLoggedIn,
       user,
     ]
   );

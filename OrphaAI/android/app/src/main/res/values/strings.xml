@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OrphaAI</string>
+    <string name="title_activity_main">OrphaAI</string>
+    <string name="package_name">com.orphaai.app</string>
+    <string name="custom_url_scheme">com.orphaai.app</string>
+</resources>
