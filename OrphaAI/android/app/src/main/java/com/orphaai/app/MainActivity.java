@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(OrphaDownloadsPlugin.class);
+        registerPlugin(com.codetrixstudio.capacitor.GoogleAuth.GoogleAuth.class);
         super.onCreate(savedInstanceState);
     }
 }

@@ -7,16 +7,23 @@ import {
   useRef,
   useState,
 } from "react";
+import { Capacitor } from "@capacitor/core";
 import { supabase } from "../supabaseClient";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-const API_BASE =
+const RAW_API_BASE =
   import.meta.env.VITE_API_BASE ||
   "https://orphaai-backend-nebu.onrender.com/api/v1";
 
 const FALLBACK_API_BASE = "https://orphaai-backend-nebu.onrender.com/api/v1";
+
+const isNativePlatform = typeof Capacitor !== "undefined" && Capacitor.isNativePlatform();
+const API_BASE =
+  isNativePlatform && (RAW_API_BASE.includes("localhost") || RAW_API_BASE.includes("127.0.0.1"))
+    ? FALLBACK_API_BASE
+    : RAW_API_BASE;
 
 const ACCESS_TOKEN_KEY  = "orphaai_access_token";
 const REFRESH_TOKEN_KEY = "orphaai_refresh_token";
@@ -49,29 +56,72 @@ function loadGisScript() {
 // ---------------------------------------------------------------------------
 // Flask session helpers (used by BOTH email/password AND Google OAuth flows)
 // ---------------------------------------------------------------------------
+function extractAuthToken(payload) {
+  if (!payload || typeof payload !== "object") return "";
+  return (
+    payload.access_token ||
+    payload.token ||
+    payload.jwt ||
+    payload.accessToken ||
+    payload.authToken ||
+    payload.idToken ||
+    payload.id_token ||
+    (payload.data &&
+      (payload.data.access_token ||
+        payload.data.token ||
+        payload.data.jwt ||
+        payload.data.accessToken ||
+        payload.data.authToken)) ||
+    ""
+  );
+}
+
+function extractAuthUser(payload) {
+  if (!payload || typeof payload !== "object") return { email: "researcher" };
+  return (
+    payload.user ||
+    (payload.data && payload.data.user) ||
+    payload.profile ||
+    (payload.data && payload.data.profile) ||
+    { email: "researcher" }
+  );
+}
+
 function storedAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_KEY) || "";
+  return (
+    localStorage.getItem(ACCESS_TOKEN_KEY) ||
+    localStorage.getItem("orphaai_token") ||
+    ""
+  );
 }
 
 function storeFlaskSession(payload) {
-  const token = payload.accessToken || payload.access_token;
+  const token = extractAuthToken(payload);
   if (token) {
     localStorage.setItem(ACCESS_TOKEN_KEY, token);
     localStorage.setItem("orphaai_token", token);
+    localStorage.setItem("orphaai_access_token", token);
   }
-  const refresh = payload.refreshToken || payload.refresh_token;
+  const refresh =
+    payload.refreshToken ||
+    payload.refresh_token ||
+    (payload.data && (payload.data.refreshToken || payload.data.refresh_token));
   if (refresh) {
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+    localStorage.setItem("orphaai_refresh_token", refresh);
   }
-  if (payload.user) {
-    localStorage.setItem("orphaai_user", JSON.stringify(payload.user));
+  const user = extractAuthUser(payload);
+  if (user) {
+    localStorage.setItem("orphaai_user", JSON.stringify(user));
   }
 }
 
 function clearFlaskSession() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem("orphaai_token");
+  localStorage.removeItem("orphaai_access_token");
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem("orphaai_refresh_token");
   localStorage.removeItem("orphaai_user");
 }
 
@@ -308,33 +358,76 @@ export function AuthProvider({ children }) {
   // Direct Google ID Token Authentication via Flask API (/auth/google)
   // -------------------------------------------------------------------------
   const loginWithGoogleCredential = useCallback(
-    async (credential) => {
+    async (credentialOrToken) => {
       setError("");
       let res;
+      const requestBody = JSON.stringify({
+        credential: credentialOrToken,
+        token: credentialOrToken,
+        id_token: credentialOrToken,
+      });
+
       try {
         res = await fetch(`${API_BASE}/auth/google`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ credential }),
+          body: requestBody,
         });
-      } catch {
-        try {
-          res = await fetch(`${FALLBACK_API_BASE}/auth/google`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ credential }),
-          });
-        } catch {
+        const contentType = res.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          throw new Error("Non-JSON API response from primary endpoint");
+        }
+      } catch (fetchErr) {
+        console.warn("[OrphaAI] Primary auth/google failed, attempting fallback:", fetchErr);
+        if (API_BASE !== FALLBACK_API_BASE) {
+          try {
+            res = await fetch(`${FALLBACK_API_BASE}/auth/google`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: requestBody,
+            });
+          } catch (fbErr) {
+            console.error("[OrphaAI] Fallback auth/google failed:", fbErr);
+            throw new Error("Unable to connect to OrphaAI servers. Please check your network connection.");
+          }
+        } else {
           throw new Error("Unable to connect to OrphaAI servers. Please check your network connection.");
         }
       }
+
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg = data.error || `Google authentication failed (${res.status})`;
-        setError(msg);
-        throw new Error(msg);
+      console.log("Google Auth Response Payload:", data, "HTTP Status:", res?.status);
+
+      // Check if backend flagged an internal failure
+      if (data.success === false || data.error) {
+        const errorMsg = data.message || data.error || "Authentication rejected by server";
+        setError(errorMsg);
+        throw new Error(errorMsg);
       }
-      return finishFlaskLogin(data);
+
+      // Accommodate whichever key the backend provides
+      const authToken = extractAuthToken(data);
+      const authUser = extractAuthUser(data);
+
+      if (authToken) {
+        localStorage.setItem("orphaai_token", authToken);
+        localStorage.setItem("orphaai_access_token", authToken);
+        localStorage.setItem("orphaai_user", JSON.stringify(authUser));
+        return finishFlaskLogin({
+          ...data,
+          user: authUser,
+          accessToken: authToken,
+          access_token: authToken,
+          token: authToken,
+        });
+      } else {
+        console.error("No token key found in 200 response:", data);
+        const errStr =
+          data.message ||
+          `Authentication payload missing token key: ${JSON.stringify(data)}`;
+        setError(errStr);
+        throw new Error(errStr);
+      }
     },
     [finishFlaskLogin]
   );

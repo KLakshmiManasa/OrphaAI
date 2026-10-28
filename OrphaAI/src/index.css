@@ -131,36 +131,6 @@ input, select, textarea {
   }
 }
 
-/* Hide default Tars launcher button while keeping modal available */
-#tars-widget-fab,
-div[id*="tars-widget-fab"],
-.tars-fab-button {
-  display: none !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
-/* Hide Tars branding badge */
-[class*="branding"],
-[id*="branding"],
-.tars-branding-badge,
-div[class*="tars-header"] span[class*="badge"],
-a[href*="hellotars.com"],
-a[href*="tars.com"],
-div[id*="tars"] [class*="branding"],
-div[id*="tars"] [id*="branding"],
-div[class*="tars"] [class*="branding"],
-div[class*="tars"] [id*="branding"],
-div[class*="convbot"] [class*="branding"],
-div[class*="convbot"] [id*="branding"],
-.tars-header-badge,
-.tars-branding,
-.tars-badge {
-  display: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
 
 /* Capsule Float Idle Keyframe */
 @keyframes capsuleFloat {

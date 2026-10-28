@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState, Component } from "react";
+import Navbar from "./components/Navbar";
 import { createPortal } from "react-dom";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { FileOpener } from "@capacitor-community/file-opener";
 import { ORPHAAI_LOGO_ALT, ORPHAAI_LOGO_SRC } from "./assets/logo";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import { useAuth } from "./auth/AuthContext";
@@ -8,8 +12,13 @@ import { downloadPdfReport, uniqueReportFilename } from "./services/pdfExportSer
 import { usePredictionContext } from "./context/PredictionContext";
 import EvidenceDossierModal from "./components/EvidenceDossierModal";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://orphaai-backend-nebu.onrender.com/api/v1";
+const RAW_API_BASE = import.meta.env.VITE_API_BASE || "https://orphaai-backend-nebu.onrender.com/api/v1";
 const FALLBACK_API_BASE = "https://orphaai-backend-nebu.onrender.com/api/v1";
+const isNativePlatform = typeof Capacitor !== "undefined" && Capacitor.isNativePlatform();
+const API_BASE =
+  isNativePlatform && (RAW_API_BASE.includes("localhost") || RAW_API_BASE.includes("127.0.0.1"))
+    ? FALLBACK_API_BASE
+    : RAW_API_BASE;
 
 const COLORS = {
   navy: "#06182B",
@@ -375,156 +384,9 @@ function inputStyle(extra = {}) {
   };
 }
 
-function NavBar({ page, setPage, user, logout }) {
-  const [profileOpen, setProfileOpen] = useState(false);
-  const nav = [
-    ["home", "Home"],
-    ["predict", "Predict"],
-    ["network", "Interaction Network"],
-    ["drugs", "Drug Library"],
-    ["diseases", "Disease Library"],
-  ];
-
-  const handleLogout = () => {
-    logout();
-    setProfileOpen(false);
-    setPage("home");
-  };
-
-  return (
-    <nav
-      className="orpha-nav"
-      style={{
-        background: "rgba(255, 255, 255, 0.92)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        borderBottom: `1px solid ${COLORS.gray100}`,
-        padding: "0 32px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        minHeight: 68,
-        position: "sticky",
-        top: 0,
-        zIndex: 40,
-        gap: 20,
-        boxSizing: "border-box",
-      }}
-    >
-      <button
-        onClick={() => setPage("home")}
-        style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "transparent", cursor: "pointer", padding: 0, minWidth: 0 }}
-      >
-        <LogoMark size={34} showText />
-      </button>
-
-      <div className="orpha-nav-links" style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", minWidth: 0 }}>
-        {nav.map(([key, label]) => {
-          const isActive = page === key;
-          return (
-            <button
-              key={key}
-              onClick={() => setPage(key)}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 8,
-                border: "none",
-                background: isActive ? COLORS.tealBg : "transparent",
-                color: isActive ? COLORS.teal : COLORS.gray600,
-                fontWeight: isActive ? 700 : 600,
-                fontSize: 14,
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {user ? (
-        <div style={{ position: "relative", minWidth: 0 }}>
-          <button
-            onClick={() => setProfileOpen((open) => !open)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              minWidth: 0,
-              border: `1px solid ${COLORS.gray200}`,
-              background: COLORS.white,
-              borderRadius: 10,
-              padding: "5px 12px 5px 6px",
-              cursor: "pointer",
-              boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
-            }}
-            aria-expanded={profileOpen}
-            aria-label="Open user profile menu"
-          >
-            {user.avatarUrl ? (
-              <img src={user.avatarUrl} alt={userLabel(user)} referrerPolicy="no-referrer" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flex: "0 0 32px" }} />
-            ) : (
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #0F6E56, #0D9488)", color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 14, flex: "0 0 32px" }}>
-                {userLabel(user)[0]}
-              </div>
-            )}
-            <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray900, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {userLabel(user)}
-            </span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={COLORS.gray600} strokeWidth="2.5">
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </button>
-
-          {profileOpen && (
-            <div
-              style={{
-                position: "absolute",
-                right: 0,
-                top: "calc(100% + 8px)",
-                width: 270,
-                maxWidth: "calc(100vw - 32px)",
-                background: COLORS.white,
-                border: `1px solid ${COLORS.gray100}`,
-                borderRadius: 14,
-                boxShadow: "0 16px 40px -8px rgba(6, 24, 43, 0.16)",
-                padding: 16,
-                zIndex: 50,
-                animation: "fadeIn 0.18s ease forwards",
-              }}
-            >
-              <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0, marginBottom: 12 }}>
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={userLabel(user)} referrerPolicy="no-referrer" style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover", flex: "0 0 42px" }} />
-                ) : (
-                  <div style={{ width: 42, height: 42, borderRadius: "50%", background: "linear-gradient(135deg, #0F6E56, #0D9488)", color: COLORS.white, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 16, flex: "0 0 42px" }}>
-                    {userLabel(user)[0]}
-                  </div>
-                )}
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ color: COLORS.navy, fontWeight: 800, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userLabel(user)}</div>
-                  <div style={{ color: COLORS.gray600, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</div>
-                </div>
-              </div>
-              <div style={{ borderTop: `1px solid ${COLORS.gray100}`, paddingTop: 12 }}>
-                <button onClick={handleLogout} style={secondaryButton({ width: "100%", justifyContent: "center", color: COLORS.coral, borderColor: "#FECDD3", background: "#FFF1F2" })}>
-                  Sign Out
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <button onClick={() => setPage("login")} style={primaryButton({ padding: "9px 20px" })}>
-          Sign In
-        </button>
-      )}
-      </div>
-    </nav>
-  );
-}
+// NavBar is now the responsive Navbar component imported from ./components/Navbar
+// (see import at top of file)
+const NavBar = Navbar;
 
 function HeroPage({ setPage }) {
   const [stats, setStats] = useState({
@@ -2839,23 +2701,79 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
     const diseaseName = meta?.disease?.name || disease || "Target Indication";
     setDownloadStatus("Generating PDF Research Dossier...");
     try {
-      const response = await fetch(`${API_BASE}/export/pdf`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ disease: diseaseName, candidates: results }),
+      const requestPayload = JSON.stringify({
+        disease: diseaseName,
+        candidates: results,
+        predictions: results,
       });
 
-      if (response.ok) {
+      let response;
+      try {
+        response = await fetch(`${API_BASE}/export/pdf`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: requestPayload,
+        });
+      } catch (err) {
+        if (API_BASE !== FALLBACK_API_BASE) {
+          response = await fetch(`${FALLBACK_API_BASE}/export/pdf`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: requestPayload,
+          });
+        } else {
+          throw err;
+        }
+      }
+
+      if (response && response.ok) {
         const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `OrphaAI_${diseaseName.replace(/[^A-Za-z0-9]+/g, "_")}_Dossier.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-        setDownloadStatus("Success: PDF Research Dossier downloaded.");
+        const fileName = `OrphaAI_${diseaseName.replace(/[^A-Za-z0-9]+/g, "_")}_Dossier.pdf`;
+
+        if (Capacitor.isNativePlatform()) {
+          // Convert Blob to Base64 for Capacitor Filesystem
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+          reader.onloadend = async () => {
+            try {
+              const base64Data = String(reader.result).split(",")[1];
+
+              // Write file directly to phone Documents directory
+              const savedFile = await Filesystem.writeFile({
+                path: fileName,
+                data: base64Data,
+                directory: Directory.Documents,
+                recursive: true,
+              });
+
+              // Automatically open the downloaded PDF in the user's PDF viewer
+              try {
+                await FileOpener.open({
+                  filePath: savedFile.uri,
+                  contentType: "application/pdf",
+                });
+                setDownloadStatus("Success: PDF saved to Documents and opened successfully.");
+              } catch (openErr) {
+                console.warn("[OrphaAI] FileOpener failed to open viewer:", openErr);
+                setDownloadStatus(`Success: PDF saved to Documents (${fileName}).`);
+              }
+            } catch (fsErr) {
+              console.error("[OrphaAI] Filesystem write failed:", fsErr);
+              setDownloadStatus(`Error: ${fsErr?.message || "Failed to save PDF to device."}`);
+            }
+          };
+        } else {
+          // Standard Web browser download
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+          setDownloadStatus("Success: PDF Research Dossier downloaded.");
+        }
       } else {
         await downloadReport();
       }

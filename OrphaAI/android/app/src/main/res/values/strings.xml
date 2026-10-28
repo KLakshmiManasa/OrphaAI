@@ -4,4 +4,5 @@
     <string name="title_activity_main">OrphaAI</string>
     <string name="package_name">com.orphaai.app</string>
     <string name="custom_url_scheme">com.orphaai.app</string>
+    <string name="server_client_id">645276021991-2npbgjkdq4ih7oumiqb632tcfc411eds.apps.googleusercontent.com</string>
 </resources>

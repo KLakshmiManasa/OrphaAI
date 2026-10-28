@@ -3,6 +3,15 @@
   "appName": "OrphaAI",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "hostname": "localhost",
+    "cleartext": true
+  },
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "645276021991-2npbgjkdq4ih7oumiqb632tcfc411eds.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
   }
 }

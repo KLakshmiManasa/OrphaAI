@@ -1,16 +1,12 @@
-import { Capacitor, registerPlugin } from "@capacitor/core";
-
-const NativeDownloads = registerPlugin("OrphaDownloads");
-
-function isNativeAndroid() {
-  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
-}
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { FileOpener } from "@capacitor-community/file-opener";
 
 function safeFilename(filename) {
   return String(filename || "orphaai-report.pdf").replace(/[\\/:*?"<>|]+/g, "_");
 }
 
-function blobToBase64(blob) {
+export function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(String(reader.result).split(",")[1] || "");
@@ -30,16 +26,26 @@ export function uniqueReportFilename(prefix = "report") {
 
 export async function downloadPdfReport(filename, content) {
   const cleanName = safeFilename(filename);
-  const blob = new Blob([content], { type: "application/pdf" });
+  const blob = content instanceof Blob ? content : new Blob([content], { type: "application/pdf" });
 
-  if (isNativeAndroid()) {
-    const data = await blobToBase64(blob);
-    const result = await NativeDownloads.savePdfToDownloads({
-      filename: cleanName,
-      base64Data: data,
-      subdirectory: "OrphaAI",
+  if (Capacitor.isNativePlatform()) {
+    const base64Data = await blobToBase64(blob);
+    const savedFile = await Filesystem.writeFile({
+      path: cleanName,
+      data: base64Data,
+      directory: Directory.Documents,
+      recursive: true,
     });
-    return result?.path || result?.uri || `Downloads/OrphaAI/${cleanName}`;
+
+    try {
+      await FileOpener.open({
+        filePath: savedFile.uri,
+        contentType: "application/pdf",
+      });
+    } catch (openErr) {
+      console.warn("[OrphaAI] FileOpener failed to open PDF viewer:", openErr);
+    }
+    return `Documents/${cleanName}`;
   }
 
   const url = URL.createObjectURL(blob);
@@ -52,3 +58,4 @@ export async function downloadPdfReport(filename, content) {
   URL.revokeObjectURL(url);
   return cleanName;
 }
+

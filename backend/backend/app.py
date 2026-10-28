@@ -354,6 +354,9 @@ def make_tokens(user: User) -> dict:
     access = create_access_token(identity=str(user.id))
     refresh = create_refresh_token(identity=str(user.id))
     return dict(
+        token=access,
+        authToken=access,
+        jwt=access,
         accessToken=access,
         refreshToken=refresh,
         access_token=access,
@@ -1260,6 +1263,7 @@ def auth_google():
     db.session.commit()
 
     return ok(dict(
+        success=True,
         message="Google login successful",
         user=user.to_dict(),
         **make_tokens(user),
@@ -1294,6 +1298,7 @@ def auth_google_supabase():
     db.session.commit()
 
     return ok(dict(
+        success=True,
         message="Google login successful",
         user=user.to_dict(),
         **make_tokens(user),
@@ -1304,7 +1309,15 @@ def auth_google_supabase():
 @app.post(f"{BASE}/auth/refresh")
 @jwt_required(refresh=True)
 def auth_refresh():
-    return ok(dict(accessToken=create_access_token(identity=str(jwt_user_id()))))
+    tok = create_access_token(identity=str(jwt_user_id()))
+    return ok(dict(
+        token=tok,
+        authToken=tok,
+        jwt=tok,
+        accessToken=tok,
+        access_token=tok,
+        success=True,
+    ))
 
 
 @app.get(f"{BASE}/auth/me")
