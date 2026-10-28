@@ -21,6 +21,10 @@ backend/backend/orphaai.db
 # Scratch & temporary
 scratch/
 .agents/
+.vercel/
+/reports/
+!appium-tests/reports/*.xlsx
+!selenium-tests/reports/*.xlsx
 
 # Android build artifacts
 *.apk

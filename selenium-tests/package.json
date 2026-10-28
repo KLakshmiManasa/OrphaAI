@@ -1,0 +1,32 @@
+{
+  "name": "orphaai-selenium-tests",
+  "version": "1.0.0",
+  "description": "Comprehensive Selenium WebDriver E2E Frontend Testing Suite for OrphaAI",
+  "main": "tests/login-tests.js",
+  "scripts": {
+    "test": "node tests/login-tests.js",
+    "test:mocha": "mocha tests/login-tests.js --timeout 60000",
+    "report:excel": "python generate_excel_report.py"
+  },
+  "keywords": [
+    "selenium",
+    "webdriver",
+    "e2e",
+    "testing",
+    "react",
+    "orphaai",
+    "authentication"
+  ],
+  "author": "OrphaAI QA Engineering Team",
+  "license": "MIT",
+  "dependencies": {
+    "selenium-webdriver": "^4.27.0"
+  },
+  "devDependencies": {
+    "chromedriver": "^131.0.0",
+    "geckodriver": "^4.5.1",
+    "mocha": "^10.8.2",
+    "chai": "^5.1.2"
+  }
+}
+

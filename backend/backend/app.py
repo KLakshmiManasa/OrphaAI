@@ -10,7 +10,7 @@
 """
 
 # ─── Standard library ────────────────────────────────────────────
-import os, re, json, math, uuid, hashlib, random, sys, time, difflib, base64
+import os, re, json, math, uuid, hashlib, random, sys, time, difflib, base64, secrets, urllib.parse
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 
@@ -28,6 +28,9 @@ import bcrypt
 import numpy as np
 import requests as http
 
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
+
 from flask import Flask, request, jsonify, g, Response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect as sa_inspect, func
@@ -36,6 +39,8 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity,
 )
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 try:
     from services.cheminformatics import (
@@ -69,21 +74,53 @@ except ImportError:
 #  APP + CONFIG
 # ═══════════════════════════════════════════════════════════════════
 
-def secure_env_secret(name: str, fallback: str) -> str:
-    value = os.getenv(name, "")
-    return value if len(value.encode()) >= 32 else fallback
+# Cryptographically Secure Secret Key Validation
+jwt_secret = os.getenv("JWT_SECRET_KEY", "").strip()
+if os.getenv("FLASK_ENV") == "production" and len(jwt_secret.encode()) < 32:
+    raise ValueError("FATAL: JWT_SECRET_KEY must be at least 32 cryptographically secure bytes in production.")
+if len(jwt_secret.encode()) < 32:
+    jwt_secret = secrets.token_hex(32)
+
+flask_secret = os.getenv("SECRET_KEY", "").strip()
+if len(flask_secret.encode()) < 32:
+    flask_secret = secrets.token_hex(32)
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Strict Origin Whitelist (Eliminates Wildcard *)
+allowed_origins = os.getenv(
+    "CORS_ALLOWED_ORIGINS",
+    "https://orpha-ai.vercel.app,http://localhost:5173,http://localhost:3000"
+).split(",")
+CORS(app, resources={r"/api/*": {"origins": [o.strip() for o in allowed_origins if o.strip()]}})
+
+# Rate Limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://",
+)
+
 app.config.update(
-    SECRET_KEY                      = os.getenv("SECRET_KEY",     "dev-secret"),
-    JWT_SECRET_KEY                  = secure_env_secret("JWT_SECRET_KEY", "dev-jwt-secret-change-me-32-bytes-min"),
-    JWT_ACCESS_TOKEN_EXPIRES        = timedelta(hours=8),
+    SECRET_KEY                      = flask_secret,
+    JWT_SECRET_KEY                  = jwt_secret,
+    JWT_ACCESS_TOKEN_EXPIRES        = timedelta(hours=1),
     JWT_REFRESH_TOKEN_EXPIRES       = timedelta(days=30),
     SQLALCHEMY_DATABASE_URI         = get_database_uri(),
     SQLALCHEMY_TRACK_MODIFICATIONS  = False,
     ANTHROPIC_API_KEY               = os.getenv("ANTHROPIC_API_KEY", ""),
+    GOOGLE_CLIENT_ID                = os.getenv("GOOGLE_CLIENT_ID", "645276021991-2npbgjkdq4ih7oumiqb632tcfc411eds.apps.googleusercontent.com"),
 )
+
+# Defense-in-Depth HTTP Security Headers
+@app.after_request
+def add_security_headers(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    return response
 
 db  = SQLAlchemy(app)
 jwt = JWTManager(app)
@@ -1190,22 +1227,32 @@ def auth_login():
     ))
 
 
-def decode_google_id_token(token: str) -> dict:
+def verify_google_id_token(token: str) -> dict:
+    """
+    Cryptographically verifies a Google ID token using google-auth.
+    Validates expiration, audience (GOOGLE_CLIENT_ID), and issuer.
+    """
+    if not token or not isinstance(token, str):
+        return {}
+    google_client_id = app.config.get("GOOGLE_CLIENT_ID")
     try:
-        if not token or not isinstance(token, str):
+        request_transport = google_requests.Request()
+        id_info = google_id_token.verify_oauth2_token(
+            token, request_transport, audience=google_client_id, clock_skew_in_seconds=10
+        )
+        if id_info.get("iss") not in ["accounts.google.com", "https://accounts.google.com"]:
             return {}
-        parts = token.split(".")
-        if len(parts) < 2:
-            return {}
-        payload_b64 = parts[1]
-        payload_b64 = payload_b64.replace("-", "+").replace("_", "/")
-        rem = len(payload_b64) % 4
-        if rem > 0:
-            payload_b64 += "=" * (4 - rem)
-        decoded_bytes = base64.b64decode(payload_b64)
-        return json.loads(decoded_bytes.decode("utf-8", errors="replace"))
-    except Exception as e:
-        print(f"[OrphaAI] Google ID token decode error: {e}", flush=True)
+        return id_info
+    except Exception:
+        # Cross-client / mobile token fallback: strictly validate issuer & email via tokeninfo
+        try:
+            resp = http.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={urllib.parse.quote(token)}", timeout=5)
+            if resp.ok:
+                info = resp.json()
+                if info.get("iss") in ["accounts.google.com", "https://accounts.google.com"] and info.get("email"):
+                    return info
+        except Exception:
+            pass
         return {}
 
 
@@ -1216,33 +1263,12 @@ def auth_google():
     if isinstance(credential, dict):
         credential = credential.get("credential") or credential.get("id_token") or credential.get("access_token") or ""
     if not credential:
-        return err("Google credential required", 400)
+        return err("Google credential required", 401)
 
-    claims = decode_google_id_token(credential)
+    claims = verify_google_id_token(credential)
     email = claims.get("email", "").lower().strip()
-
-    # Fallback 1: Query Google tokeninfo API for ID tokens
     if not email:
-        try:
-            resp = http.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}", timeout=5)
-            if resp.ok:
-                claims = resp.json()
-                email = claims.get("email", "").lower().strip()
-        except Exception:
-            pass
-
-    # Fallback 2: Query Google userinfo API for Access tokens
-    if not email:
-        try:
-            resp = http.get("https://www.googleapis.com/oauth2/v3/userinfo", headers={"Authorization": f"Bearer {credential}"}, timeout=5)
-            if resp.ok:
-                claims = resp.json()
-                email = claims.get("email", "").lower().strip()
-        except Exception:
-            pass
-
-    if not email:
-        return err("Invalid Google token payload", 400)
+        return err("Invalid or unverified Google token signature", 401)
 
     first_name = claims.get("given_name") or (claims.get("name", "Google").split()[0] if claims.get("name") else "Google")
     last_name = claims.get("family_name") or ""
@@ -1270,16 +1296,57 @@ def auth_google():
     ))
 
 
+
+
+
+
 @app.post(f"{BASE}/auth/google-supabase")
 def auth_google_supabase():
     d = request.get_json(silent=True) or {}
-    email = d.get("email", "").lower().strip()
-    if not email:
-        return err("Email required", 400)
+    auth_header = request.headers.get("Authorization", "")
+    token = ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+    if not token:
+        token = d.get("access_token") or d.get("token") or ""
 
-    full_name = d.get("full_name", "").strip()
-    parts = full_name.split(None, 1)
-    first_name = parts[0] if parts else "Google"
+    if not token:
+        return err("Valid Supabase access token required", 401)
+
+    email = None
+    claims = {}
+    supabase_url = os.getenv("SUPABASE_URL", "").strip()
+    supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "").strip()
+
+    if supabase_url:
+        try:
+            headers = {"Authorization": f"Bearer {token}"}
+            anon_key = os.getenv("SUPABASE_ANON_KEY", "").strip()
+            if anon_key:
+                headers["apikey"] = anon_key
+            resp = http.get(f"{supabase_url.rstrip('/')}/auth/v1/user", headers=headers, timeout=5)
+            if resp.ok:
+                user_info = resp.json()
+                email = user_info.get("email", "").lower().strip()
+                claims = user_info.get("user_metadata", {})
+        except Exception:
+            pass
+
+    if not email and supabase_jwt_secret:
+        try:
+            import jwt as pyjwt
+            decoded = pyjwt.decode(token, supabase_jwt_secret, algorithms=["HS256"], audience="authenticated")
+            email = decoded.get("email", "").lower().strip()
+            claims = decoded.get("user_metadata", {})
+        except Exception:
+            pass
+
+    if not email:
+        return err("Invalid or unverified Supabase authentication token", 401)
+
+    full_name = claims.get("full_name") or d.get("full_name", "").strip()
+    parts = full_name.split(None, 1) if full_name else []
+    first_name = parts[0] if parts else "Supabase"
     last_name = parts[1] if len(parts) > 1 else "User"
 
     user = User.query.filter_by(email=email).first()
@@ -1288,7 +1355,7 @@ def auth_google_supabase():
             email=email,
             first_name=first_name,
             last_name=last_name,
-            institution="Google OAuth User",
+            institution="Supabase OAuth User",
             role="researcher",
         )
         user.set_password(str(uuid.uuid4()))
@@ -1299,11 +1366,10 @@ def auth_google_supabase():
 
     return ok(dict(
         success=True,
-        message="Google login successful",
+        message="Supabase authentication successful",
         user=user.to_dict(),
         **make_tokens(user),
     ))
-
 
 
 @app.post(f"{BASE}/auth/refresh")
@@ -2774,8 +2840,14 @@ def reports_delete(report_id):
 # ──────────────────────────────────────────────────────────────────
 #  PUBCHEM  /api/v1/pubchem
 # ──────────────────────────────────────────────────────────────────
-@app.get(f"{BASE}/pubchem/<drug_name>")
+SAFE_PARAM_REGEX = re.compile(r"^[a-zA-Z0-9\s\-_]{1,100}$")
+
+@app.get(f"{BASE}/pubchem/<path:drug_name>")
 def get_pubchem(drug_name):
+    drug_name_clean = drug_name.strip()
+    if not SAFE_PARAM_REGEX.match(drug_name_clean):
+        return err("Invalid drug name format. Only alphanumeric characters, dashes, underscores, and spaces allowed.", 400)
+    safe_name = urllib.parse.quote(drug_name_clean, safe='')
     try:
         props = ",".join([
             "MolecularFormula", "MolecularWeight", "IUPACName", "CanonicalSMILES", "ConnectivitySMILES",
@@ -2784,10 +2856,10 @@ def get_pubchem(drug_name):
             "ExactMass", "MonoisotopicMass",
         ])
         url = (
-            f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{drug_name}"
+            f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{safe_name}"
             f"/property/{props}/JSON"
         )
-        response = http.get(url, timeout=12)
+        response = http.get(url, timeout=5)
         if response.status_code == 404:
             return err("PubChem compound not found", 404)
         response.raise_for_status()
@@ -2846,22 +2918,27 @@ def get_pubchem(drug_name):
         return err(str(e), 500)
 
 
-@app.get(f"{BASE}/kegg/disease/<disease_name>")
+@app.get(f"{BASE}/kegg/disease/<path:disease_name>")
 def kegg_disease(disease_name):
+    disease_name_clean = disease_name.strip()
+    if not SAFE_PARAM_REGEX.match(disease_name_clean):
+        return err("Invalid disease name format. Only alphanumeric characters, dashes, underscores, and spaces allowed.", 400)
     try:
         find_resp = None
-        for variant in kegg_query_variants(disease_name):
-            find_resp = http.get(f"https://rest.kegg.jp/find/disease/{drug_or_disease_slug(variant)}", timeout=12)
+        for variant in kegg_query_variants(disease_name_clean):
+            safe_variant = urllib.parse.quote(drug_or_disease_slug(variant), safe='')
+            find_resp = http.get(f"https://rest.kegg.jp/find/disease/{safe_variant}", timeout=5)
             if find_resp.ok and find_resp.text.strip():
                 break
-        if not find_resp.ok or not find_resp.text.strip():
-            fallback = local_disease_kegg_fallback(disease_name, "KEGG disease not found")
+        if not find_resp or not find_resp.ok or not find_resp.text.strip():
+            fallback = local_disease_kegg_fallback(disease_name_clean, "KEGG disease not found")
             if fallback:
                 return ok(fallback)
             return err("KEGG disease not found", 404)
         first = find_resp.text.strip().splitlines()[0]
-        entry_id = first.split("\t", 1)[0]
-        get_resp = http.get(f"https://rest.kegg.jp/get/{entry_id}", timeout=12)
+        entry_id = first.split("\t", 1)[0].strip()
+        safe_entry = urllib.parse.quote(entry_id, safe='')
+        get_resp = http.get(f"https://rest.kegg.jp/get/{safe_entry}", timeout=5)
         if not get_resp.ok:
             return err("KEGG disease detail unavailable", 502)
         parsed = parse_kegg_flatfile(get_resp.text)
@@ -3040,7 +3117,8 @@ def build_chat_system_prompt(screen_context: dict = None) -> str:
     return "\n\n".join(prompt_parts)
 
 @app.post(f"{BASE}/chat/message")
-# @jwt_required()   # Uncomment to re-enable auth on this endpoint
+@jwt_required()
+@limiter.limit("10 per minute")
 def chat_message():
     """
     Body: { message: str, history: [{role, content}], context: dict, stream: bool }
@@ -3211,17 +3289,31 @@ def missing_token(reason):
 def seed_database():
     """Populate DB with realistic biomedical seed data."""
 
-    # ── Admin user ────────────────────────────────────────────────
-    if not User.query.filter_by(email="admin@orphaai.com").first():
-        admin = User(email="admin@orphaai.com", first_name="Admin",
-                     last_name="OrphaAI", institution="OrphaAI Platform", role="admin")
-        admin.set_password("Admin1234")
+        # ── Admin user provisioning via environment variables only ────
+    admin_email = os.getenv("ADMIN_EMAIL")
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    if admin_email and admin_password and not User.query.filter_by(email=admin_email.lower().strip()).first():
+        admin = User(
+            email=admin_email.lower().strip(),
+            first_name="Admin",
+            last_name="OrphaAI",
+            institution="OrphaAI Platform",
+            role="admin",
+        )
+        admin.set_password(admin_password)
         db.session.add(admin)
 
-    if not User.query.filter_by(email="demo@orphaai.com").first():
-        demo = User(email="demo@orphaai.com", first_name="Dr. Demo",
-                    last_name="Researcher", institution="MIT Broad Institute", role="researcher")
-        demo.set_password("Demo1234")
+    demo_email = os.getenv("DEMO_EMAIL")
+    demo_password = os.getenv("DEMO_PASSWORD")
+    if demo_email and demo_password and not User.query.filter_by(email=demo_email.lower().strip()).first():
+        demo = User(
+            email=demo_email.lower().strip(),
+            first_name="Dr. Demo",
+            last_name="Researcher",
+            institution="MIT Broad Institute",
+            role="researcher",
+        )
+        demo.set_password(demo_password)
         db.session.add(demo)
 
     db.session.flush()
@@ -4160,6 +4252,30 @@ def _get_response(message: str, context: dict = None) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════
+#  CLI COMMANDS
+# ═══════════════════════════════════════════════════════════════════
+
+@app.cli.command("create-admin")
+def create_admin_command():
+    """CLI command to securely provision an administrative account."""
+    import getpass
+    email = input("Admin Email: ").strip()
+    password = getpass.getpass("Admin Password: ").strip()
+    if not email or not password:
+        print("Error: Email and password required.")
+        return
+    with app.app_context():
+        if User.query.filter_by(email=email.lower()).first():
+            print(f"Error: User {email} already exists.")
+            return
+        admin = User(email=email.lower(), first_name="Admin", last_name="OrphaAI", role="admin")
+        admin.set_password(password)
+        db.session.add(admin)
+        db.session.commit()
+        print(f"Admin account {email} successfully created.")
+
+
+# ═══════════════════════════════════════════════════════════════════
 #  STARTUP
 # ═══════════════════════════════════════════════════════════════════
 
@@ -4170,14 +4286,9 @@ with app.app_context():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
-    print(f"""
-╔══════════════════════════════════════════════════╗
-║       OrphaAI API  •  MVP Backend                ║
-║  http://localhost:{port}                          ║
-║                                                  ║
-║  Demo login:  demo@orphaai.com / Demo1234        ║
-║  Admin login: admin@orphaai.com / Admin1234      ║
-╚══════════════════════════════════════════════════╝
-    """)
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+    print(f"[OrphaAI Backend] Production-hardened server running on port {port}")
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)

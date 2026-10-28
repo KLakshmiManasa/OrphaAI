@@ -2671,7 +2671,7 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
     setIsDossierOpen(true);
   };
 
-  const exportRawCsv = () => {
+  const exportRawCsv = async () => {
     if (!results || results.length === 0) return;
     const headers = ["Rank", "Drug Name", "Clinical Phase", "Evidence Tier", "Disease Area", "Target Genes", "Mechanism of Action", "Composite Score"];
     const rows = results.map((r, idx) => {
@@ -2686,15 +2686,40 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
       return [rank, `"${name}"`, `"${phase}"`, `"${tier}"`, `"${area}"`, `"${targets}"`, `"${moa}"`, score].join(",");
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
+    const rawCsvText = [headers.join(","), ...rows].join("\n");
     const filename = `OrphaAI_${(meta?.disease?.name || disease || "results").replace(/[^A-Za-z0-9]+/g, "_")}_Data.csv`;
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const savedFile = await Filesystem.writeFile({
+          path: filename,
+          data: rawCsvText,
+          directory: Directory.Documents,
+          encoding: "utf8",
+          recursive: true,
+        });
+        try {
+          await FileOpener.open({
+            filePath: savedFile.uri,
+            contentType: "text/csv",
+          });
+        } catch {
+          // File saved successfully in Documents
+        }
+      } catch (err) {
+        console.warn("[OrphaAI] Native CSV export failed:", err);
+      }
+    } else {
+      const blob = new Blob([rawCsvText], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   };
 
   const downloadPdfDossier = async () => {

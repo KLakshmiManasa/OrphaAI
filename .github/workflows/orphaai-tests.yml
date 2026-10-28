@@ -1,0 +1,79 @@
+name: OrphaAI Full-Stack Quality Assurance & Excel Test Reports
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: 'Target API Base URL for Diagnostic Tests'
+        required: false
+        default: 'https://orphaai-backend-nebu.onrender.com/api/v1'
+
+jobs:
+  run-all-4-tests:
+    name: Execute All 4 Test Suites & Export Excel Artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python Environment
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # Step 3: Install Test Runner Dependencies
+      - name: Install Python Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl requests
+
+      # Step 4: Set up Node.js Environment
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'OrphaAI/package.json'
+
+      # Step 5: Verify Frontend Build Integrity
+      - name: Build Web Application
+        run: |
+          cd OrphaAI
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+          npm run build
+
+      # Step 6: Execute All 4 Core Test Suites & Generate Excel Reports
+      # Suite 1: Authentication & Session Persistence
+      # Suite 2: Navigation & Responsive Layout
+      # Suite 3: Repurposing Prediction Pipeline & Data Exports
+      # Suite 4: Interaction Network Graph & Molecular Interactome
+      - name: Run All 4 Test Suites & Build Excel Spreadsheets
+        env:
+          VITE_API_BASE: ${{ github.event.inputs.api_base_url || 'https://orphaai-backend-nebu.onrender.com/api/v1' }}
+          REPORT_DIR: ${{ github.workspace }}/reports
+        run: |
+          python scripts/run_all_tests.py
+
+      # Step 7: Upload All Test Excel Reports to GitHub Actions Artifacts
+      - name: Upload Test Excel Reports (Downloadable Artifacts)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: OrphaAI-Test-Excel-Reports-${{ github.sha }}
+          path: |
+            reports/OrphaAI_Comprehensive_Test_Report.xlsx
+            reports/Test_Suite_1_Authentication.xlsx
+            reports/Test_Suite_2_Navigation_Layout.xlsx
+            reports/Test_Suite_3_Prediction_Exports.xlsx
+            reports/Test_Suite_4_Network_Graph.xlsx
+          retention-days: 30
+          if-no-files-found: error
+
