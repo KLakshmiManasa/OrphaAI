@@ -13,8 +13,8 @@ on:
         default: 'https://orphaai-backend-nebu.onrender.com/api/v1'
 
 jobs:
-  run-all-4-tests:
-    name: Execute All 4 Test Suites & Export Excel Artifacts
+  run-all-tests:
+    name: Execute All Test Suites & Export Excel Artifacts
     runs-on: ubuntu-latest
 
     steps:
@@ -50,30 +50,26 @@ jobs:
           npm ci --legacy-peer-deps || npm install --legacy-peer-deps
           npm run build
 
-      # Step 6: Execute All 4 Core Test Suites & Generate Excel Reports
-      # Suite 1: Authentication & Session Persistence
-      # Suite 2: Navigation & Responsive Layout
-      # Suite 3: Repurposing Prediction Pipeline & Data Exports
-      # Suite 4: Interaction Network Graph & Molecular Interactome
-      - name: Run All 4 Test Suites & Build Excel Spreadsheets
+      # Step 6: Execute Core Test Suites & Build All Excel Workbooks
+      - name: Run Test Suites & Build Excel Spreadsheets
         env:
           VITE_API_BASE: ${{ github.event.inputs.api_base_url || 'https://orphaai-backend-nebu.onrender.com/api/v1' }}
           REPORT_DIR: ${{ github.workspace }}/reports
         run: |
           python scripts/run_all_tests.py
+          python appium-tests/runner.py
+          python selenium-tests/generate_excel_report.py
 
       # Step 7: Upload All Test Excel Reports to GitHub Actions Artifacts
       - name: Upload Test Excel Reports (Downloadable Artifacts)
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: OrphaAI-Test-Excel-Reports-${{ github.sha }}
+          name: OrphaAI-All-Excel-Test-Reports
           path: |
-            reports/OrphaAI_Comprehensive_Test_Report.xlsx
-            reports/Test_Suite_1_Authentication.xlsx
-            reports/Test_Suite_2_Navigation_Layout.xlsx
-            reports/Test_Suite_3_Prediction_Exports.xlsx
-            reports/Test_Suite_4_Network_Graph.xlsx
+            reports/*.xlsx
+            appium-tests/reports/*.xlsx
+            selenium-tests/reports/*.xlsx
+            Vulnerability Test Results/*.xlsx
           retention-days: 30
-          if-no-files-found: error
-
+          if-no-files-found: warn
