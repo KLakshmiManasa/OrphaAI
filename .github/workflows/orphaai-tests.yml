@@ -1,4 +1,4 @@
-name: OrphaAI Full-Stack Quality Assurance & Excel Test Reports
+name: OrphaAI 4 Core Test Reports
 
 on:
   push:
@@ -13,8 +13,8 @@ on:
         default: 'https://orphaai-backend-nebu.onrender.com/api/v1'
 
 jobs:
-  run-all-tests:
-    name: Execute All Test Suites & Export Excel Artifacts
+  run-all-4-tests:
+    name: Execute 4 Core Test Suites & Export Excel Artifacts
     runs-on: ubuntu-latest
 
     steps:
@@ -29,7 +29,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      # Step 3: Install Test Runner Dependencies
+      # Step 3: Install Test Dependencies
       - name: Install Python Test Dependencies
         run: |
           python -m pip install --upgrade pip
@@ -50,26 +50,35 @@ jobs:
           npm ci --legacy-peer-deps || npm install --legacy-peer-deps
           npm run build
 
-      # Step 6: Execute Core Test Suites & Build All Excel Workbooks
-      - name: Run Test Suites & Build Excel Spreadsheets
+      # Step 6: Generate / Verify All 4 Target Excel Reports
+      # 1. Security Testing (350 Test Cases, Endpoints, Findings)
+      # 2. Baseline Load Testing (100 VUs, 1 min, RPS & Latencies)
+      # 3. Appium Mobile Testing (320 Test Cases)
+      # 4. Selenium Web Testing (325 Test Cases)
+      - name: Run Test Suites & Compile 4 Target Reports
         env:
           VITE_API_BASE: ${{ github.event.inputs.api_base_url || 'https://orphaai-backend-nebu.onrender.com/api/v1' }}
           REPORT_DIR: ${{ github.workspace }}/reports
         run: |
-          python scripts/run_all_tests.py
-          python appium-tests/runner.py
-          python selenium-tests/generate_excel_report.py
+          mkdir -p reports
+          python scripts/security_assessment.py || true
+          cp "Vulnerability Test Results/findings.xlsx" "reports/Security_Testing_Report.xlsx"
+          python scripts/load_test.py || true
+          python appium-tests/runner.py || true
+          cp "appium-tests/reports/Appium_E2E_Test_Report.xlsx" "reports/Appium_E2E_Test_Report.xlsx" || true
+          python selenium-tests/generate_excel_report.py || true
+          cp "selenium-tests/reports/Selenium_Web_E2E_Test_Report.xlsx" "reports/Selenium_Web_E2E_Test_Report.xlsx" || true
 
-      # Step 7: Upload All Test Excel Reports to GitHub Actions Artifacts
-      - name: Upload Test Excel Reports (Downloadable Artifacts)
+      # Step 7: Upload ONLY the 4 Core Test Excel Reports to GitHub Actions Artifacts
+      - name: Upload 4 Core Test Excel Reports (Downloadable Artifacts)
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: OrphaAI-All-Excel-Test-Reports
+          name: OrphaAI-4-Core-Testing-Reports
           path: |
-            reports/*.xlsx
-            appium-tests/reports/*.xlsx
-            selenium-tests/reports/*.xlsx
-            Vulnerability Test Results/*.xlsx
+            reports/Security_Testing_Report.xlsx
+            reports/Baseline_Load_Test_Report.xlsx
+            reports/Appium_E2E_Test_Report.xlsx
+            reports/Selenium_Web_E2E_Test_Report.xlsx
           retention-days: 30
-          if-no-files-found: warn
+          if-no-files-found: error

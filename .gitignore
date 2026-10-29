@@ -22,7 +22,8 @@ backend/backend/orphaai.db
 scratch/
 .agents/
 .vercel/
-/reports/
+/reports/*
+!reports/*.xlsx
 !appium-tests/reports/*.xlsx
 !selenium-tests/reports/*.xlsx
 
