@@ -513,16 +513,40 @@ export function AuthProvider({ children }) {
   );
 
   // -------------------------------------------------------------------------
-  // Direct Google ID Token Authentication via Flask API (/auth/google)
+  // Direct Google ID Token Authentication via Supabase & Flask API
   // -------------------------------------------------------------------------
   const loginWithGoogleCredential = useCallback(
     async (credentialOrToken) => {
       setError("");
+
+      // 1. Authenticate directly with Supabase Auth (records login and updates last_sign_in_at)
+      let supaUser = null;
+      let supaSession = null;
+      try {
+        const { data: supaAuth, error: supaErr } = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token: credentialOrToken,
+        });
+
+        if (!supaErr && supaAuth?.user) {
+          supaUser = supaAuth.user;
+          supaSession = supaAuth.session;
+          console.log("[OrphaAI] Supabase Google sign-in active:", supaUser.email, supaUser.id);
+          upsertSupabaseProfile(supaUser).catch(() => {});
+        } else if (supaErr) {
+          console.warn("[OrphaAI] Supabase signInWithIdToken notice:", supaErr.message);
+        }
+      } catch (supaEx) {
+        console.warn("[OrphaAI] Supabase signInWithIdToken exception:", supaEx);
+      }
+
+      // 2. Synchronize with Flask backend for API access token
       let res;
       const requestBody = JSON.stringify({
         credential: credentialOrToken,
         token: credentialOrToken,
         id_token: credentialOrToken,
+        supabase_uid: supaUser?.id || undefined,
       });
 
       try {
@@ -531,10 +555,6 @@ export function AuthProvider({ children }) {
           headers: { "Content-Type": "application/json" },
           body: requestBody,
         });
-        const contentType = res.headers.get("content-type") || "";
-        if (!contentType.includes("application/json")) {
-          throw new Error("Non-JSON API response from primary endpoint");
-        }
       } catch (fetchErr) {
         console.warn("[OrphaAI] Primary auth/google failed, attempting fallback:", fetchErr);
         if (API_BASE !== FALLBACK_API_BASE) {
@@ -545,47 +565,54 @@ export function AuthProvider({ children }) {
               body: requestBody,
             });
           } catch (fbErr) {
-            console.error("[OrphaAI] Fallback auth/google failed:", fbErr);
-            throw new Error("Unable to connect to OrphaAI servers. Please check your network connection.");
+            console.warn("[OrphaAI] Fallback auth/google notice:", fbErr);
           }
-        } else {
-          throw new Error("Unable to connect to OrphaAI servers. Please check your network connection.");
         }
       }
 
-      const data = await res.json().catch(() => ({}));
-      console.log("Google Auth Response Payload:", data, "HTTP Status:", res?.status);
-
-      // Check if backend flagged an internal failure
-      if (data.success === false || data.error) {
-        const errorMsg = data.message || data.error || "Authentication rejected by server";
-        setError(errorMsg);
-        throw new Error(errorMsg);
+      let data = null;
+      if (res && res.ok) {
+        data = await res.json().catch(() => ({}));
       }
 
-      // Accommodate whichever key the backend provides
-      const authToken = extractAuthToken(data);
-      const authUser = extractAuthUser(data);
-
-      if (authToken) {
-        localStorage.setItem("orphaai_token", authToken);
-        localStorage.setItem("orphaai_access_token", authToken);
-        localStorage.setItem("orphaai_user", JSON.stringify(authUser));
-        return finishFlaskLogin({
-          ...data,
-          user: authUser,
-          accessToken: authToken,
-          access_token: authToken,
-          token: authToken,
-        });
-      } else {
-        console.error("No token key found in 200 response:", data);
-        const errStr =
-          data.message ||
-          `Authentication payload missing token key: ${JSON.stringify(data)}`;
-        setError(errStr);
-        throw new Error(errStr);
+      if (data && (data.user || data.token || data.access_token)) {
+        return finishFlaskLogin(data);
       }
+
+      // If backend is unreachable but Supabase authenticated, establish the normalized user session
+      if (supaUser) {
+        const meta = supaUser.user_metadata || {};
+        const firstName = meta.given_name || meta.first_name || (meta.name ? meta.name.split(" ")[0] : supaUser.email.split("@")[0]);
+        const lastName = meta.family_name || meta.last_name || (meta.name ? meta.name.split(" ").slice(1).join(" ") : "");
+        const norm = {
+          id: supaUser.id,
+          email: supaUser.email,
+          firstName,
+          lastName,
+          fullName: meta.name || `${firstName} ${lastName}`.trim(),
+          avatarUrl: meta.avatar_url || meta.picture || null,
+          role: "researcher",
+          institution: "Google OAuth User",
+          source: "supabase",
+          isActive: true,
+        };
+
+        if (supaSession?.access_token) {
+          localStorage.setItem(ACCESS_TOKEN_KEY, supaSession.access_token);
+          localStorage.setItem("orphaai_token", supaSession.access_token);
+          localStorage.setItem("orphaai_access_token", supaSession.access_token);
+        }
+        if (supaSession?.refresh_token) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, supaSession.refresh_token);
+          localStorage.setItem("orphaai_refresh_token", supaSession.refresh_token);
+        }
+        localStorage.setItem("orphaai_user", JSON.stringify(norm));
+        setUser(norm);
+        setError("");
+        return norm;
+      }
+
+      throw new Error(data?.message || data?.error || "Google sign-in failed to establish session.");
     },
     [finishFlaskLogin]
   );
