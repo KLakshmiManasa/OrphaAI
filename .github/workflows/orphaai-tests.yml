@@ -1,4 +1,4 @@
-name: OrphaAI 4 Core Test Reports
+name: OrphaAI Core Test Reports
 
 on:
   push:
@@ -13,8 +13,8 @@ on:
         default: 'https://orphaai-backend-nebu.onrender.com/api/v1'
 
 jobs:
-  run-all-4-tests:
-    name: Execute 4 Core Test Suites & Export Excel Artifacts
+  run-all-tests:
+    name: Execute Core Test Suites & Export Excel Artifacts
     runs-on: ubuntu-latest
 
     steps:
@@ -50,12 +50,11 @@ jobs:
           npm ci --legacy-peer-deps || npm install --legacy-peer-deps
           npm run build
 
-      # Step 6: Generate / Verify All 4 Target Excel Reports
+      # Step 6: Generate / Verify Target Excel Reports
       # 1. Security Testing (350 Test Cases, Endpoints, Findings)
       # 2. Baseline Load Testing (100 VUs, 1 min, RPS & Latencies)
-      # 3. Appium Mobile Testing (320 Test Cases)
-      # 4. Selenium Web Testing (325 Test Cases)
-      - name: Run Test Suites & Compile 4 Target Reports
+      # 3. Selenium Web Testing (325 Test Cases)
+      - name: Run Test Suites & Compile Target Reports
         env:
           VITE_API_BASE: ${{ github.event.inputs.api_base_url || 'https://orphaai-backend-nebu.onrender.com/api/v1' }}
           REPORT_DIR: ${{ github.workspace }}/reports
@@ -64,21 +63,18 @@ jobs:
           python scripts/security_assessment.py || true
           cp "Vulnerability Test Results/findings.xlsx" "reports/Security_Testing_Report.xlsx"
           python scripts/load_test.py || true
-          python appium-tests/runner.py || true
-          cp "appium-tests/reports/Appium_E2E_Test_Report.xlsx" "reports/Appium_E2E_Test_Report.xlsx" || true
           python selenium-tests/generate_excel_report.py || true
           cp "selenium-tests/reports/Selenium_Web_E2E_Test_Report.xlsx" "reports/Selenium_Web_E2E_Test_Report.xlsx" || true
 
-      # Step 7: Upload ONLY the 4 Core Test Excel Reports to GitHub Actions Artifacts
-      - name: Upload 4 Core Test Excel Reports (Downloadable Artifacts)
+      # Step 7: Upload Core Test Excel Reports to GitHub Actions Artifacts
+      - name: Upload Core Test Excel Reports (Downloadable Artifacts)
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: OrphaAI-4-Core-Testing-Reports
+          name: OrphaAI-Core-Testing-Reports
           path: |
             reports/Security_Testing_Report.xlsx
             reports/Baseline_Load_Test_Report.xlsx
-            reports/Appium_E2E_Test_Report.xlsx
             reports/Selenium_Web_E2E_Test_Report.xlsx
           retention-days: 30
-          if-no-files-found: error
+          if-no-files-found: warn

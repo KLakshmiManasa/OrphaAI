@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { Capacitor } from "@capacitor/core";
 import { supabase } from "../supabaseClient";
 
 // ---------------------------------------------------------------------------
@@ -17,13 +16,8 @@ const RAW_API_BASE =
   import.meta.env.VITE_API_BASE ||
   "https://orphaai-backend-nebu.onrender.com/api/v1";
 
-const FALLBACK_API_BASE = "https://orphaai-backend-nebu.onrender.com/api/v1";
-
-const isNativePlatform = typeof Capacitor !== "undefined" && Capacitor.isNativePlatform();
-const API_BASE =
-  isNativePlatform && (RAW_API_BASE.includes("localhost") || RAW_API_BASE.includes("127.0.0.1"))
-    ? FALLBACK_API_BASE
-    : RAW_API_BASE;
+const FALLBACK_API_BASE = 'https://orphaai-backend-nebu.onrender.com/api/v1';
+const API_BASE = RAW_API_BASE;
 
 const ACCESS_TOKEN_KEY  = "orphaai_access_token";
 const REFRESH_TOKEN_KEY = "orphaai_refresh_token";
@@ -333,9 +327,86 @@ export function AuthProvider({ children }) {
   const loginWithPassword = useCallback(
     async ({ email, password }) => {
       setError("");
+      const cleanEmail = email.trim();
+
+      // 1. Direct Supabase Authentication
+      try {
+        const { data: supaData, error: supaErr } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        });
+
+        if (!supaErr && supaData?.user) {
+          const supaUser = supaData.user;
+          const meta = supaUser.user_metadata || {};
+          const firstName = meta.firstName || meta.first_name || (meta.name ? meta.name.split(" ")[0] : cleanEmail.split("@")[0]);
+          const lastName = meta.lastName || meta.last_name || (meta.name ? meta.name.split(" ").slice(1).join(" ") : "");
+          const fullName = meta.full_name || meta.name || `${firstName} ${lastName}`.trim();
+          const institution = meta.institution || "Research Institution";
+          const role = meta.role || "researcher";
+
+          // Sync authenticated Supabase session with backend for API JWT
+          let flaskData = null;
+          try {
+            const syncRes = await fetch(`${API_BASE}/auth/google-supabase`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: cleanEmail,
+                full_name: fullName,
+                avatar_url: meta.avatar_url || meta.picture || "",
+                supabase_uid: supaUser.id,
+              }),
+            });
+            if (syncRes.ok) {
+              flaskData = await syncRes.json();
+            }
+          } catch (syncErr) {
+            console.warn("[OrphaAI] Supabase session sync with backend:", syncErr);
+          }
+
+          if (flaskData && flaskData.user) {
+            return finishFlaskLogin(flaskData);
+          }
+
+          // Direct Supabase Session fallback
+          const norm = {
+            id: supaUser.id,
+            email: cleanEmail,
+            firstName,
+            lastName,
+            fullName,
+            role,
+            institution,
+            source: "supabase",
+            isActive: true,
+          };
+
+          const token = supaData.session?.access_token || "";
+          if (token) {
+            localStorage.setItem(ACCESS_TOKEN_KEY, token);
+            localStorage.setItem("orphaai_token", token);
+            localStorage.setItem("orphaai_access_token", token);
+          }
+          if (supaData.session?.refresh_token) {
+            localStorage.setItem(REFRESH_TOKEN_KEY, supaData.session.refresh_token);
+            localStorage.setItem("orphaai_refresh_token", supaData.session.refresh_token);
+          }
+          localStorage.setItem("orphaai_user", JSON.stringify(norm));
+          setUser(norm);
+          setError("");
+          return norm;
+        } else if (supaErr) {
+          console.warn("[OrphaAI] Supabase password sign-in notice:", supaErr.message);
+        }
+      } catch (supaEx) {
+        console.warn("[OrphaAI] Supabase auth attempt:", supaEx);
+      }
+
+      // 2. Fallback to Flask backend (for seeded demo/admin or backend-synced accounts)
       const data = await authRequest("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: cleanEmail, password }),
       });
       return finishFlaskLogin(data);
     },
@@ -345,9 +416,96 @@ export function AuthProvider({ children }) {
   const registerWithPassword = useCallback(
     async ({ email, password, firstName, lastName, institution }) => {
       setError("");
+      const cleanEmail = email.trim();
+
+      // 1. Direct Supabase Registration
+      try {
+        const { data: supaData, error: supaErr } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+          options: {
+            data: {
+              firstName,
+              lastName,
+              name: `${firstName} ${lastName}`.trim(),
+              full_name: `${firstName} ${lastName}`.trim(),
+              institution: institution || "Research Institution",
+              role: "researcher",
+            },
+          },
+        });
+
+        if (!supaErr && supaData?.user) {
+          const supaUser = supaData.user;
+          const meta = supaUser.user_metadata || {};
+          const fullName = `${firstName} ${lastName}`.trim();
+
+          // Sync with backend
+          let flaskData = null;
+          try {
+            const syncRes = await fetch(`${API_BASE}/auth/google-supabase`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: cleanEmail,
+                full_name: fullName,
+                avatar_url: meta.avatar_url || meta.picture || "",
+                supabase_uid: supaUser.id,
+              }),
+            });
+            if (syncRes.ok) {
+              flaskData = await syncRes.json();
+            }
+          } catch (syncErr) {
+            console.warn("[OrphaAI] Supabase register sync with backend:", syncErr);
+          }
+
+          if (flaskData && flaskData.user) {
+            return finishFlaskLogin(flaskData);
+          }
+
+          const norm = {
+            id: supaUser.id,
+            email: cleanEmail,
+            firstName,
+            lastName,
+            fullName,
+            role: "researcher",
+            institution: institution || "Research Institution",
+            source: "supabase",
+            isActive: true,
+          };
+
+          const token = supaData.session?.access_token || "";
+          if (token) {
+            localStorage.setItem(ACCESS_TOKEN_KEY, token);
+            localStorage.setItem("orphaai_token", token);
+            localStorage.setItem("orphaai_access_token", token);
+          }
+          if (supaData.session?.refresh_token) {
+            localStorage.setItem(REFRESH_TOKEN_KEY, supaData.session.refresh_token);
+            localStorage.setItem("orphaai_refresh_token", supaData.session.refresh_token);
+          }
+          localStorage.setItem("orphaai_user", JSON.stringify(norm));
+          setUser(norm);
+          setError("");
+
+          // Also best-effort sync to Flask register
+          authRequest("/auth/register", {
+            method: "POST",
+            body: JSON.stringify({ email: cleanEmail, password, firstName, lastName, institution }),
+          }).catch(() => {});
+
+          return norm;
+        }
+      } catch (e) {
+        console.warn("[OrphaAI] Supabase signUp exception:", e);
+      }
+
+      // 2. Fallback to Flask backend registration
       const data = await authRequest("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, firstName, lastName, institution }),
+        body: JSON.stringify({ email: cleanEmail, password, firstName, lastName, institution }),
       });
       return finishFlaskLogin(data);
     },
@@ -476,7 +634,7 @@ export function AuthProvider({ children }) {
 
       // Step 2: check for a Supabase session (Google OAuth user) if Supabase URL is active
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (supabaseUrl && !supabaseUrl.includes("rueqocfsletjyyvfzfdg")) {
+      if (supabaseUrl && true) {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) {
           console.warn("[OrphaAI] getSession error:", sessionError.message);

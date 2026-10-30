@@ -67,37 +67,16 @@ export default function EvidenceDossierModal({ isOpen, onClose, candidate, disea
 
   const modalContent = (
     <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(15, 23, 42, 0.65)",
-        backdropFilter: "blur(4px)",
-        zIndex: 2000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-      }}
+      className="fixed inset-0 bg-slate-900/65 backdrop-blur-sm z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-5"
       onClick={onClose}
     >
       <div
-        style={{
-          background: COLORS.white,
-          borderRadius: 20,
-          maxWidth: 760,
-          width: "100%",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow: "0 20px 50px rgba(15, 23, 42, 0.25)",
-          border: `1px solid ${COLORS.gray200}`,
-          display: "flex",
-          flexDirection: "column",
-        }}
+        className="bg-white rounded-t-3xl sm:rounded-2xl max-w-[760px] w-full max-h-[85vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col transition-all pb-[env(safe-area-inset-bottom,16px)] sm:pb-0"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile Drag Indicator Handle */}
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto my-2.5 sm:hidden flex-shrink-0" />
+
         {/* Header Section */}
         <div
           style={{

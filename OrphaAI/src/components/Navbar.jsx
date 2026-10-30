@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronDown } from 'lucide-react';
+import { ChevronDown, Home, Sparkles, Share2, Pill, Dna } from 'lucide-react';
 import { ORPHAAI_LOGO_SRC, ORPHAAI_LOGO_ALT } from '../assets/logo';
 
 const NAV_ITEMS = [
@@ -8,6 +8,14 @@ const NAV_ITEMS = [
   { id: 'network', label: 'Interaction Network' },
   { id: 'drugs', label: 'Drug Library' },
   { id: 'diseases', label: 'Disease Library' },
+];
+
+const BOTTOM_NAV_ITEMS = [
+  { id: 'home', shortLabel: 'Home', fullLabel: 'Home', icon: Home },
+  { id: 'predict', shortLabel: 'Predict', fullLabel: 'Predict', icon: Sparkles },
+  { id: 'network', shortLabel: 'Network', fullLabel: 'Interaction Network', icon: Share2 },
+  { id: 'drugs', shortLabel: 'Drugs', fullLabel: 'Drug Library', icon: Pill },
+  { id: 'diseases', shortLabel: 'Diseases', fullLabel: 'Disease Library', icon: Dna },
 ];
 
 export default function Navbar(props) {
@@ -21,20 +29,17 @@ export default function Navbar(props) {
     else if (props.setActiveTab) props.setActiveTab('login');
   });
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
   const handleSelect = (id) => {
     setActiveTab(id);
-    setMenuOpen(false);
     setProfileOpen(false);
   };
 
   const handleLogout = () => {
     onSignOut();
     setProfileOpen(false);
-    setMenuOpen(false);
     setActiveTab('home');
   };
 
@@ -61,7 +66,6 @@ export default function Navbar(props) {
 
   return (
     <>
-      {/* Bulletproof CSS responsive rules that work natively in all browsers and Android WebViews */}
       <style>{`
         .orpha-desktop-nav-group {
           display: flex;
@@ -72,44 +76,30 @@ export default function Navbar(props) {
           border-radius: 16px;
           border: 1px solid #f1f5f9;
         }
-        .orpha-mobile-menu-btn {
-          display: none;
-        }
         .orpha-desktop-user-label {
           display: inline;
         }
-        .orpha-mobile-drawer {
-          display: block;
-        }
 
-        @media (max-width: 1023px) {
+        @media (max-width: 767px) {
           .orpha-desktop-nav-group {
             display: none !important;
-          }
-          .orpha-mobile-menu-btn {
-            display: flex !important;
           }
           .orpha-desktop-user-label {
             display: none !important;
           }
         }
 
-        @media (min-width: 1024px) {
+        @media (min-width: 768px) {
           .orpha-desktop-nav-group {
             display: flex !important;
-          }
-          .orpha-mobile-menu-btn {
-            display: none !important;
           }
           .orpha-desktop-user-label {
             display: inline !important;
           }
-          .orpha-mobile-drawer {
-            display: none !important;
-          }
         }
       `}</style>
 
+      {/* 1. Native Top App Bar */}
       <nav
         style={{
           position: 'sticky',
@@ -122,7 +112,6 @@ export default function Navbar(props) {
           boxSizing: 'border-box',
         }}
       >
-        {/* Main Single-Line Bar */}
         <div
           style={{
             maxWidth: '1280px',
@@ -137,7 +126,7 @@ export default function Navbar(props) {
             boxSizing: 'border-box',
           }}
         >
-          {/* Left: Brand Logo */}
+          {/* Left: Brand Logo & Title */}
           <div
             onClick={() => handleSelect('home')}
             style={{
@@ -210,7 +199,7 @@ export default function Navbar(props) {
             </div>
           </div>
 
-          {/* Center: Desktop Navigation Links (Hidden on Mobile via CSS) */}
+          {/* Center: Desktop Navigation Links (Visible on md+ screens) */}
           <div className="orpha-desktop-nav-group">
             {NAV_ITEMS.map((item) => {
               const isActive = activeTab === item.id;
@@ -237,7 +226,7 @@ export default function Navbar(props) {
             })}
           </div>
 
-          {/* Right: User Status / Sign In & Hamburger Toggle */}
+          {/* Right: User Status / Sign In */}
           <div
             style={{
               display: 'flex',
@@ -414,70 +403,45 @@ export default function Navbar(props) {
                 Sign In
               </button>
             )}
-
-            {/* Mobile Menu Hamburger Button (Hidden on Desktop via CSS) */}
-            <button
-              className="orpha-mobile-menu-btn"
-              onClick={() => {
-                setMenuOpen((prev) => !prev);
-                setProfileOpen(false);
-              }}
-              style={{
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '8px',
-                borderRadius: '10px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: '#334155',
-                cursor: 'pointer',
-              }}
-              aria-label="Toggle Navigation Menu"
-            >
-              {menuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
           </div>
         </div>
+      </nav>
 
-        {/* Mobile Drawer Dropdown */}
-        {menuOpen && (
-          <div
-            className="orpha-mobile-drawer"
-            style={{
-              backgroundColor: '#ffffff',
-              borderTop: '1px solid #f1f5f9',
-              padding: '8px 16px 14px',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
-            }}
-          >
-            {NAV_ITEMS.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleSelect(item.id)}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    backgroundColor: isActive ? '#f0fdf4' : 'transparent',
-                    color: isActive ? '#065f46' : '#475569',
-                    fontSize: '14px',
-                    fontWeight: isActive ? 700 : 500,
-                    cursor: 'pointer',
-                    marginBottom: '4px',
-                    transition: 'background 0.15s ease',
-                  }}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
+      {/* 2. Authentic Native Bottom Navigation Bar for Mobile Viewports */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 flex justify-around items-center z-50 pb-[env(safe-area-inset-bottom)] px-1 select-none"
+        role="navigation"
+        aria-label="Mobile Bottom Navigation"
+      >
+        {BOTTOM_NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleSelect(item.id)}
+              className={`flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-150 active:scale-95 ${
+                isActive ? 'text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200 font-medium'
+              }`}
+              aria-label={item.fullLabel}
+            >
+              <div
+                className={`flex items-center justify-center p-1 rounded-xl transition-colors duration-150 ${
+                  isActive ? 'bg-emerald-500/20 text-[#10B981]' : 'text-slate-400'
+                }`}
+              >
+                <Icon size={20} strokeWidth={isActive ? 2.4 : 1.8} />
+              </div>
+              <span
+                className="text-[10px] leading-tight mt-0.5 tracking-tight font-medium"
+                style={{ color: isActive ? '#10B981' : '#94A3B8' }}
+              >
+                {item.shortLabel}
+              </span>
+              <span className="sr-only">{item.fullLabel}</span>
+            </button>
+          );
+        })}
       </nav>
     </>
   );

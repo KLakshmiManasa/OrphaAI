@@ -88,11 +88,18 @@ if len(flask_secret.encode()) < 32:
 app = Flask(__name__)
 
 # Strict Origin Whitelist (Eliminates Wildcard *)
-allowed_origins = os.getenv(
-    "CORS_ALLOWED_ORIGINS",
-    "https://orpha-ai.vercel.app,http://localhost:5173,http://localhost:3000"
-).split(",")
-CORS(app, resources={r"/api/*": {"origins": [o.strip() for o in allowed_origins if o.strip()]}})
+allowed_origins = [o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+for origin in ["http://localhost:5173", "http://localhost:3000", "http://localhost"]:
+    if origin not in allowed_origins:
+        allowed_origins.append(origin)
+
+CORS(
+    app,
+    resources={r"/api/*": {"origins": allowed_origins}},
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
 
 # Rate Limiter
 limiter = Limiter(

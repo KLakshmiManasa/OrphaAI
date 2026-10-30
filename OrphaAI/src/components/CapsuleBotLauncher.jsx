@@ -8,7 +8,7 @@ export default function CapsuleBotLauncher() {
     <>
       {/* 1. Chatbot Modal Container */}
       {isOpen && (
-        <div className="fixed inset-0 z-[999998] flex items-end sm:items-end justify-end p-2 sm:p-6 pointer-events-none">
+        <div className="fixed inset-0 z-[999998] flex items-end sm:items-end justify-end p-2 pb-20 sm:p-6 sm:pb-6 pointer-events-none">
           <div className="relative w-full sm:w-[400px] h-[82vh] sm:h-[620px] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col pointer-events-auto animate-in fade-in slide-in-from-bottom-6 duration-200">
             
             {/* Modal Header */}
@@ -42,7 +42,7 @@ export default function CapsuleBotLauncher() {
       )}
 
       {/* 2. Floating Splitting Capsule Action Button */}
-      <div className="fixed bottom-6 right-6 z-[999999] select-none">
+      <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-[999999] select-none">
         <button
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Toggle AI Assistant"

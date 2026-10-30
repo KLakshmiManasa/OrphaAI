@@ -311,7 +311,7 @@ def run_suite_3():
     # 3.5 Raw CSV Export RFC 4180 Conformity
     results.append({
         "id": "PRED-05",
-        "name": "Raw Data CSV Export Across Web & APK",
+        "name": "Raw Data CSV Export",
         "description": "Verify RFC 4180 CSV serialization and Capacitor Filesystem write fallback",
         "status": "PASS",
         "latency_ms": 1.1,
@@ -370,7 +370,7 @@ def run_suite_4():
         "latency_ms": 0.4,
         "expected": "Desktop: 3-col canvas + 1-col sidebar; Mobile: full-width canvas + stacked card",
         "actual": "lg:grid lg:grid-cols-4 layout; static full-width bottom docking on small viewports",
-        "details": "Eliminates absolute position collision over graph viewport on APK/mobile screens."
+        "details": "Eliminates absolute position collision over graph viewport on mobile/responsive screens."
     })
 
     # 4.4 Bioactive Mechanism Edge Filtering
@@ -424,7 +424,7 @@ def generate_excel_reports(all_suites):
 
     ws_dash.merge_cells("A2:G2")
     sub_cell = ws_dash["A2"]
-    sub_cell.value = f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')} | Platform: Web & Android APK | Environment: Production / Staging"
+    sub_cell.value = f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')} | Platform: Web | Environment: Production / Staging"
     sub_cell.font = font_subtitle
     ws_dash.row_dimensions[2].height = 18
 

@@ -53,7 +53,16 @@ html, body {
   background-color: var(--bg-page);
   font-family: var(--font-sans);
   color: var(--text-main);
-  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none; /* Disables web rubber-band bounce */
+  -webkit-touch-callout: none; /* Disables Safari/Chrome hold menu */
+  -webkit-user-select: none;   /* Disables text selection highlights */
+  user-select: none;
+  -webkit-tap-highlight-color: transparent; /* Removes blue tap box */
+}
+
+input, textarea {
+  user-select: text; /* Retain text selection for search and form inputs */
+  -webkit-user-select: text;
 }
 
 #root {

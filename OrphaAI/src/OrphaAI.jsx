@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useRef, useState, Component } from "react";
 import Navbar from "./components/Navbar";
 import { createPortal } from "react-dom";
-import { Capacitor } from "@capacitor/core";
-import { Filesystem, Directory } from "@capacitor/filesystem";
-import { FileOpener } from "@capacitor-community/file-opener";
 import { ORPHAAI_LOGO_ALT, ORPHAAI_LOGO_SRC } from "./assets/logo";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import { useAuth } from "./auth/AuthContext";
@@ -13,12 +10,7 @@ import { usePredictionContext } from "./context/PredictionContext";
 import EvidenceDossierModal from "./components/EvidenceDossierModal";
 
 const RAW_API_BASE = import.meta.env.VITE_API_BASE || "https://orphaai-backend-nebu.onrender.com/api/v1";
-const FALLBACK_API_BASE = "https://orphaai-backend-nebu.onrender.com/api/v1";
-const isNativePlatform = typeof Capacitor !== "undefined" && Capacitor.isNativePlatform();
-const API_BASE =
-  isNativePlatform && (RAW_API_BASE.includes("localhost") || RAW_API_BASE.includes("127.0.0.1"))
-    ? FALLBACK_API_BASE
-    : RAW_API_BASE;
+const API_BASE = RAW_API_BASE;
 
 const COLORS = {
   navy: "#06182B",
@@ -267,13 +259,14 @@ function Modal({ title, onClose, children }) {
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-3xl max-h-[85vh] sm:max-h-[90vh] bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden sm:my-auto animate-in fade-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 pb-[env(safe-area-inset-bottom,16px)] sm:pb-0"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto my-2.5 sm:hidden flex-shrink-0" />
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900 m-0 tracking-tight">{title}</h2>
           <button
@@ -452,7 +445,7 @@ function HeroPage({ setPage }) {
           <line x1="1120" y1="100" x2="1280" y2="220" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="1" strokeDasharray="5 5" />
           <line x1="1120" y1="100" x2="940" y2="160" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="1" strokeDasharray="5 5" />
           <line x1="1280" y1="220" x2="1200" y2="380" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="1" strokeDasharray="5 5" />
-          
+
           <circle cx="120" cy="90" r="5" fill="#2DD4BF" filter="url(#nodeGlow)" />
           <circle cx="280" cy="180" r="7" fill="#38BDF8" filter="url(#nodeGlow)" />
           <circle cx="210" cy="340" r="4" fill="#A7F3D0" />
@@ -2129,7 +2122,7 @@ function CnsMpoBadge({ pred, drug }) {
   const cns = pred?.cns_mpo || pred?.cnsMpo || pred?.bbbPermeability || drug?.cnsMpo || drug?.bbbPermeability;
   const score = cns?.cns_mpo_score || cns?.score;
   const badge = cns?.bbb_badge || cns?.badge || (score >= 4.0 ? "🟢 CNS Permeant" : (score >= 2.5 ? "🟡 Moderate BBB" : "🔴 Non-Permeant"));
-  
+
   if (!score) return null;
 
   let tone = "teal";
@@ -2622,8 +2615,8 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
       "Currently Used / Standard Drugs:",
       ...(currentTreatments.length
         ? currentTreatments.flatMap((item, index) => [
-            `${index + 1}. ${item.name} - ${item.reason || "Current/standard treatment"}`,
-          ])
+          `${index + 1}. ${item.name} - ${item.reason || "Current/standard treatment"}`,
+        ])
         : ["No current-treatment mapping found in the local curated set."]),
       "",
       "Top Candidate Drugs:",
@@ -2689,37 +2682,15 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
     const rawCsvText = [headers.join(","), ...rows].join("\n");
     const filename = `OrphaAI_${(meta?.disease?.name || disease || "results").replace(/[^A-Za-z0-9]+/g, "_")}_Data.csv`;
 
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const savedFile = await Filesystem.writeFile({
-          path: filename,
-          data: rawCsvText,
-          directory: Directory.Documents,
-          encoding: "utf8",
-          recursive: true,
-        });
-        try {
-          await FileOpener.open({
-            filePath: savedFile.uri,
-            contentType: "text/csv",
-          });
-        } catch {
-          // File saved successfully in Documents
-        }
-      } catch (err) {
-        console.warn("[OrphaAI] Native CSV export failed:", err);
-      }
-    } else {
-      const blob = new Blob([rawCsvText], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
+    const blob = new Blob([rawCsvText], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const downloadPdfDossier = async () => {
@@ -2755,50 +2726,16 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
         const blob = await response.blob();
         const fileName = `OrphaAI_${diseaseName.replace(/[^A-Za-z0-9]+/g, "_")}_Dossier.pdf`;
 
-        if (Capacitor.isNativePlatform()) {
-          // Convert Blob to Base64 for Capacitor Filesystem
-          const reader = new FileReader();
-          reader.readAsDataURL(blob);
-          reader.onloadend = async () => {
-            try {
-              const base64Data = String(reader.result).split(",")[1];
-
-              // Write file directly to phone Documents directory
-              const savedFile = await Filesystem.writeFile({
-                path: fileName,
-                data: base64Data,
-                directory: Directory.Documents,
-                recursive: true,
-              });
-
-              // Automatically open the downloaded PDF in the user's PDF viewer
-              try {
-                await FileOpener.open({
-                  filePath: savedFile.uri,
-                  contentType: "application/pdf",
-                });
-                setDownloadStatus("Success: PDF saved to Documents and opened successfully.");
-              } catch (openErr) {
-                console.warn("[OrphaAI] FileOpener failed to open viewer:", openErr);
-                setDownloadStatus(`Success: PDF saved to Documents (${fileName}).`);
-              }
-            } catch (fsErr) {
-              console.error("[OrphaAI] Filesystem write failed:", fsErr);
-              setDownloadStatus(`Error: ${fsErr?.message || "Failed to save PDF to device."}`);
-            }
-          };
-        } else {
-          // Standard Web browser download
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          window.URL.revokeObjectURL(url);
-          setDownloadStatus("Success: PDF Research Dossier downloaded.");
-        }
+        // Standard Web browser download
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        setDownloadStatus("Success: PDF Research Dossier downloaded.");
       } else {
         await downloadReport();
       }
@@ -2903,7 +2840,7 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
       {/* Error Banner if any */}
       {error && !loading && (
         <div style={{ background: COLORS.coralBg, color: COLORS.coral, border: "1px solid #FECDD3", borderRadius: 12, padding: "14px 18px", marginTop: 20, fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 10 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
           {error}
         </div>
       )}
@@ -3763,620 +3700,620 @@ function InteractionNetworkPage({ user, setPage, setSearchContext }) {
                   Reset ({Math.round(zoom * 100)}%)
                 </button>
               </div>
-                  {loading ? (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, color: COLORS.teal, padding: 32, textAlign: "center" }}>
-                      <svg className="animate-spin" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "spin 1s linear infinite" }}>
-                        <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                        <path d="M12 2a10 10 0 0 1 10 10" />
-                      </svg>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.navy }}>
-                        Constructing Tripartite Interactome Topology...
-                      </div>
-                      <div style={{ fontSize: 13, color: COLORS.gray600 }}>
-                        Resolving causal targets & candidate compounds for {networkType === "disease" ? selectedDisease : (selectedDrug?.name || "selected compound")}
-                      </div>
-                    </div>
-                  ) : layout.nodes.length === 0 ? (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: 36, textAlign: "center" }}>
-                      <div style={{ width: 54, height: 54, borderRadius: "50%", background: COLORS.tealBg, color: COLORS.teal, display: "grid", placeItems: "center", fontSize: 24, margin: "0 auto" }}>
-                        🌐
-                      </div>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.navy }}>
-                        No Interactome Subgraph Available
-                      </div>
-                      <p style={{ fontSize: 13.5, color: COLORS.gray600, maxWidth: 460, margin: 0, lineHeight: 1.5 }}>
-                        No target interaction data found for this selection. Choose another target indication or drug compound above to generate the interactome.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedDisease("Alzheimer's Disease");
-                          setNetworkType("disease");
-                        }}
-                        style={primaryButton({ padding: "8px 18px", fontSize: 13, marginTop: 6 })}
-                      >
-                        Load Alzheimer's Disease Network
-                      </button>
-                    </div>
-                  ) : (
-                    <svg
-                      viewBox="0 0 1000 580"
-                      preserveAspectRatio="xMidYMid meet"
-                      style={{ width: "100%", height: "100%", display: "block", cursor: isDragging ? "grabbing" : "grab" }}
-                      onMouseDown={(e) => {
-                        if (e.button === 0) {
-                          setIsDragging(true);
-                          setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-                        }
-                      }}
-                      onMouseMove={(e) => {
-                        if (isDragging) {
-                          setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
-                        }
-                      }}
-                      onMouseUp={() => setIsDragging(false)}
-                      onMouseLeave={() => setIsDragging(false)}
-                    >
-                      <defs>
-                        <filter id="softGlow">
-                          <feGaussianBlur stdDeviation="6" result="blur" />
-                          <feMerge>
-                            <feMergeNode in="blur" />
-                            <feMergeNode in="SourceGraphic" />
-                          </feMerge>
-                        </filter>
-                        <filter id="selectedGlow">
-                          <feGaussianBlur stdDeviation="5" result="blur" />
-                          <feMerge>
-                            <feMergeNode in="blur" />
-                            <feMergeNode in="SourceGraphic" />
-                          </feMerge>
-                        </filter>
-                      </defs>
-
-                      <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`} transformOrigin="500 290" style={{ transition: isDragging ? "none" : "transform 0.15s ease-out" }}>
-                        {/* Tri-Partite Column Section Headers */}
-                        <g opacity="0.65">
-                          <text x="180" y="32" textAnchor="middle" fontSize="11" fontWeight="800" fill={COLORS.navy} letterSpacing="0.06em">
-                            {networkType === "disease" ? "TARGET INDICATION" : "CONNECTED DISEASES"}
-                          </text>
-                          <text x="520" y="32" textAnchor="middle" fontSize="11" fontWeight="800" fill="#0EA5E9" letterSpacing="0.06em">
-                            CAUSAL TARGET GENES
-                          </text>
-                          <text x="820" y="32" textAnchor="middle" fontSize="11" fontWeight="800" fill="#8B5CF6" letterSpacing="0.06em">
-                            {networkType === "disease" ? "CANDIDATE DRUGS" : "ACTIVE DRUG COMPOUND"}
-                          </text>
-                          <line x1="350" y1="42" x2="350" y2="550" stroke="#CBD5E1" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
-                          <line x1="670" y1="42" x2="670" y2="550" stroke="#CBD5E1" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
-                        </g>
-
-                        {/* Render Edges */}
-                        {layout.edges.map((edge) => {
-                          const strokeColor = edge.color || (edge.actionType === "Inhibitor" ? "#E11D48" : edge.actionType === "Activator" ? "#10B981" : edge.type === "causal_association" ? "#0EA5E9" : "#8B5CF6");
-                          const isConnected = neighborIds ? (neighborIds.has(edge.source.id) && neighborIds.has(edge.target.id)) : true;
-                          const strokeOpacity = isConnected ? 0.85 : 0.12;
-
-                          return (
-                            <line
-                              key={edge.id || `${edge.source.id}-${edge.target.id}`}
-                              x1={edge.source.x}
-                              y1={edge.source.y}
-                              x2={edge.target.x}
-                              y2={edge.target.y}
-                              stroke={strokeColor}
-                              strokeWidth={isConnected ? (edge.weight ? Math.min(edge.weight * 2.8, 4) : 2) : 1}
-                              strokeDasharray={edge.type === "inferred" ? "4 3" : undefined}
-                              opacity={strokeOpacity}
-                              style={{ transition: "opacity 0.25s ease, stroke-width 0.25s ease" }}
-                            />
-                          );
-                        })}
-
-                        {/* Render Nodes */}
-                        {layout.nodes.map((node) => {
-                          const isNeighbor = neighborIds ? neighborIds.has(node.id) : true;
-                          const isSelected = selectedTarget && selectedTarget.id === node.id;
-                          const nodeOpacity = isNeighbor ? 1 : 0.18;
-
-                          let nodeFill = COLORS.purple;
-                          let nodeStroke = COLORS.purple;
-                          if (node.type === "disease") {
-                            nodeFill = "#0F172A";
-                            nodeStroke = "#0EA5E9";
-                          } else if (node.type === "protein" || node.type === "gene") {
-                            nodeFill = "#EEF2FF";
-                            nodeStroke = "#4F46E5";
-                          } else if (node.type === "drug") {
-                            if (node.actionType === "Inhibitor") {
-                              nodeFill = "#FFF1F2";
-                              nodeStroke = "#E11D48";
-                            } else if (node.actionType === "Activator") {
-                              nodeFill = "#ECFDF5";
-                              nodeStroke = "#10B981";
-                            } else {
-                              nodeFill = "#F5F3FF";
-                              nodeStroke = "#8B5CF6";
-                            }
-                          }
-
-                          return (
-                            <g
-                              key={node.id}
-                              transform={`translate(${node.x} ${node.y})`}
-                              filter={isSelected ? "url(#selectedGlow)" : undefined}
-                              opacity={nodeOpacity}
-                              style={{ transition: "opacity 0.25s ease, transform 0.4s ease", cursor: "pointer" }}
-                              onMouseEnter={(e) => moveTooltip(e, node)}
-                              onMouseMove={(e) => moveTooltip(e, node)}
-                              onMouseLeave={() => setTooltip(null)}
-                              onClick={() => setSelectedTarget(node)}
-                            >
-                              {isSelected && (
-                                <circle r={node.r + 6} fill="none" stroke={COLORS.tealBright} strokeWidth="3" strokeDasharray="3 3" />
-                              )}
-
-                              <circle
-                                r={node.r}
-                                fill={nodeFill}
-                                stroke={nodeStroke}
-                                strokeWidth={node.type === "disease" ? 3 : 2}
-                              />
-
-                              {/* Inside Circle Icon/Symbol */}
-                              <text
-                                y="4"
-                                textAnchor="middle"
-                                fontSize={node.type === "disease" ? 14 : node.type === "protein" || node.type === "gene" ? 11 : 12}
-                                fontWeight="800"
-                                fill={node.type === "disease" ? "#38BDF8" : node.type === "protein" || node.type === "gene" ? "#4F46E5" : nodeStroke}
-                              >
-                                {node.type === "disease" ? "🎯" : node.type === "protein" || node.type === "gene" ? shortLabel(node.label, 6) : "💊"}
-                              </text>
-
-                              {/* Clean Exterior Label Below Circle with Halo to Prevent Clipping */}
-                              <g transform={`translate(0, ${node.r + 14})`}>
-                                {/* Halo background outline for crisp contrast */}
-                                <text
-                                  textAnchor="middle"
-                                  fontSize="11"
-                                  fontWeight="700"
-                                  fill="none"
-                                  stroke="#FFFFFF"
-                                  strokeWidth="4"
-                                  strokeLinejoin="round"
-                                >
-                                  {shortLabel(node.label, 20)}
-                                </text>
-                                <text
-                                  textAnchor="middle"
-                                  fontSize="11"
-                                  fontWeight="700"
-                                  fill={COLORS.navy}
-                                >
-                                  {shortLabel(node.label, 20)}
-                                </text>
-
-                                {/* Subtitle Badge under unclipped label */}
-                                <text
-                                  y="12"
-                                  textAnchor="middle"
-                                  fontSize="8.5"
-                                  fontWeight="600"
-                                  fill={node.type === "disease" ? "#0284C7" : node.type === "protein" || node.type === "gene" ? "#4F46E5" : nodeStroke}
-                                >
-                                  {node.type === "disease" ? "Indication" : node.type === "protein" || node.type === "gene" ? "Target Gene" : (node.actionType || "Candidate")}
-                                </text>
-                              </g>
-                            </g>
-                          );
-                        })}
-                      </g>
-                    </svg>
-                  )}
-
-                  {tooltip && <TripartiteTooltip tooltip={tooltip} />}
-                </div>
-
-                {/* Integrated Legend: Clean bar underneath canvas so it never obscures the graph */}
-                <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs w-full">
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="font-bold text-slate-800 uppercase tracking-wider text-[10px]">Edge Direction:</span>
-                    <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-1 bg-[#0EA5E9] rounded-sm" /><span className="text-slate-700 font-semibold">🔵 Causal Link</span></span>
-                    <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-1 bg-[#E11D48] rounded-sm" /><span className="text-slate-700 font-semibold">🔴 Inhibition</span></span>
-                    <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-1 bg-[#10B981] rounded-sm" /><span className="text-slate-700 font-semibold">🟢 Activation</span></span>
-                    <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-1 bg-[#8B5CF6] rounded-sm" /><span className="text-slate-700 font-semibold">🟣 Convergence</span></span>
+              {loading ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, color: COLORS.teal, padding: 32, textAlign: "center" }}>
+                  <svg className="animate-spin" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "spin 1s linear infinite" }}>
+                    <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                    <path d="M12 2a10 10 0 0 1 10 10" />
+                  </svg>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.navy }}>
+                    Constructing Tripartite Interactome Topology...
                   </div>
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="font-bold text-slate-800 uppercase tracking-wider text-[10px]">Nodes:</span>
-                    <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#0F172A] border border-[#0EA5E9]" /><span className="text-slate-700 font-medium">Indication</span></span>
-                    <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#EEF2FF] border border-[#4F46E5]" /><span className="text-slate-700 font-medium">Causal Gene</span></span>
-                    <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#FFF1F2] border border-[#E11D48]" /><span className="text-slate-700 font-medium">Inhibitor</span></span>
-                    <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#ECFDF5] border border-[#10B981]" /><span className="text-slate-700 font-medium">Activator</span></span>
+                  <div style={{ fontSize: 13, color: COLORS.gray600 }}>
+                    Resolving causal targets & candidate compounds for {networkType === "disease" ? selectedDisease : (selectedDrug?.name || "selected compound")}
                   </div>
                 </div>
-              </Panel>
-            </div>
-
-            {/* Right Column: Network Inspector (Sidebar on desktop, bottom card on mobile) */}
-            <div className="w-full lg:col-span-1 min-w-0">
-              <TripartiteSidePanel
-                node={selectedTarget}
-                onClear={() => setSelectedTarget(null)}
-                onRouteToPredict={(disName) => {
-                  if (setSearchContext && disName) setSearchContext({ disease: disName });
-                  if (setPage) setPage("predict");
-                }}
-                onOpenDossier={(cand) => {
-                  setDossierCandidate(cand);
-                  setIsDossierOpen(true);
-                }}
-              />
-            </div>
-          </div>
-
-            {/* Candidate Inspector Dossier Modal */}
-            <EvidenceDossierModal
-              isOpen={isDossierOpen && Boolean(dossierCandidate)}
-              onClose={() => {
-                setIsDossierOpen(false);
-                setDossierCandidate(null);
-              }}
-              candidate={dossierCandidate}
-              diseaseName={selectedDisease || "Target Indication"}
-            />
-          </PageShell>
-        );
-      }
-
-      // Layout Engine: Builds 3 vertical bands [Disease: Left (x=180)] -> [Target Genes: Middle (x=520)] -> [Drugs: Right (x=820)]
-      function buildTripartiteNetworkLayout(network, interactionFilter = "All") {
-        if (!network || !network.nodes) return { nodes: [], edges: [], targets: [], primaryCount: 0, secondaryCount: 0, diseaseLinkCount: 0 };
-        const nodes = [];
-        const edges = [];
-
-        const rawDiseases = network.nodes.filter((n) => n.type === "disease");
-        const rawGenes = network.nodes.filter((n) => n.type === "protein" || n.type === "gene");
-        const rawDrugs = network.nodes.filter((n) => n.type === "drug");
-
-        // Position Disease(s) on Left Column (x = 180, 18% of 1000)
-        if (rawDiseases.length === 1) {
-          nodes.push({
-            ...rawDiseases[0],
-            x: 180,
-            y: 290,
-            r: 32,
-          });
-        } else if (rawDiseases.length > 1) {
-          const disStep = Math.min(65, 420 / Math.max(rawDiseases.length, 1));
-          const disStartY = 290 - ((rawDiseases.length - 1) * disStep) / 2;
-          rawDiseases.forEach((d, idx) => {
-            nodes.push({
-              ...d,
-              x: 180,
-              y: Math.max(70, Math.min(500, disStartY + idx * disStep)),
-              r: 24,
-            });
-          });
-        } else {
-          nodes.push({ id: "disease_target", label: "Target Disease", type: "disease", x: 180, y: 290, r: 32 });
-        }
-
-        // Apply Interaction Filter to Drugs
-        let filteredDrugs = rawDrugs;
-        if (interactionFilter === "Inhibitors") {
-          filteredDrugs = rawDrugs.filter((d) => (d.actionType || d.action_type || "").toLowerCase().includes("inhibitor"));
-        } else if (interactionFilter === "Activators") {
-          filteredDrugs = rawDrugs.filter((d) => (d.actionType || d.action_type || "").toLowerCase().includes("activator") || (d.actionType || d.action_type || "").toLowerCase().includes("agonist"));
-        }
-
-        // Clean Edge Routing & Pruning: Filter out orphaned intermediate gene nodes that have 0 connections
-        const edgeConnectedIds = new Set();
-        (network.edges || []).forEach((e) => {
-          edgeConnectedIds.add(e.source?.id || e.source);
-          edgeConnectedIds.add(e.target?.id || e.target);
-        });
-
-        const activeGenes = rawGenes.filter((g) => edgeConnectedIds.has(g.id) || rawGenes.length <= 8);
-
-        // Position Genes in Center Column (x = 520, 52% of 1000)
-        const geneStep = Math.min(60, 440 / Math.max(activeGenes.length, 1));
-        const geneStartY = 290 - ((activeGenes.length - 1) * geneStep) / 2;
-        const positionedGenes = activeGenes.map((g, idx) => ({
-          ...g,
-          x: 520,
-          y: Math.max(70, Math.min(510, geneStartY + idx * geneStep)),
-          r: 22,
-        }));
-        nodes.push(...positionedGenes);
-
-        // Position Drugs in Right Column (x = 820, 82% of 1000)
-        if (filteredDrugs.length === 1) {
-          nodes.push({
-            ...filteredDrugs[0],
-            x: 820,
-            y: 290,
-            r: 30,
-          });
-        } else {
-          const drugStep = Math.min(48, 450 / Math.max(filteredDrugs.length, 1));
-          const drugStartY = 290 - ((filteredDrugs.length - 1) * drugStep) / 2;
-          const positionedDrugs = filteredDrugs.map((d, idx) => ({
-            ...d,
-            x: 820,
-            y: Math.max(70, Math.min(510, drugStartY + idx * drugStep)),
-            r: 20,
-          }));
-          nodes.push(...positionedDrugs);
-        }
-
-        const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-
-        // Re-link Edges with coordinate endpoints
-        (network.edges || []).forEach((e) => {
-          const src = nodeMap.get(e.source?.id || e.source);
-          const tgt = nodeMap.get(e.target?.id || e.target);
-          if (src && tgt) {
-            edges.push({
-              ...e,
-              source: src,
-              target: tgt,
-            });
-          }
-        });
-
-        return {
-          nodes,
-          edges,
-          targets: positionedGenes,
-          primaryCount: activeGenes.length,
-          secondaryCount: filteredDrugs.length,
-          diseaseLinkCount: edges.length,
-        };
-      }
-
-      function buildDrugNetworkLayout(network, layoutMode, maxTargets, interactionFilter) {
-        return buildTripartiteNetworkLayout(network, interactionFilter);
-      }
-
-      function shortLabel(text, max = 12) {
-        if (!text) return "";
-        const s = String(text);
-        return s.length > max ? s.slice(0, max - 1) + "…" : s;
-      }
-
-      function DetailRow({ label, value, color }) {
-        if (value === undefined || value === null) return null;
-        return (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, fontSize: 12 }}>
-            <span style={{ color: COLORS.gray600, fontWeight: 600 }}>{label}:</span>
-            <span style={{ color: color || COLORS.navy, fontWeight: 700, textAlign: "right" }}>{value}</span>
-          </div>
-        );
-      }
-
-      function TripartiteTooltip({ tooltip }) {
-        const node = tooltip.node;
-        return (
-          <div
-            style={{
-              position: "absolute",
-              left: tooltip.x,
-              top: tooltip.y,
-              width: 260,
-              zIndex: 20,
-              background: COLORS.white,
-              border: `1px solid ${COLORS.gray200}`,
-              borderRadius: 12,
-              padding: "14px 16px",
-              boxShadow: "0 14px 36px rgba(6, 24, 43, 0.2)",
-              pointerEvents: "none",
-              color: COLORS.gray800,
-            }}
-          >
-            <div style={{ color: COLORS.navy, fontSize: 16, fontWeight: 800, marginBottom: 6 }}>
-              {node.label}
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: COLORS.teal, marginBottom: 8 }}>
-              Role: {node.type === "disease" ? "Target Indication" : node.type === "protein" || node.type === "gene" ? "Causal Target Gene" : "Repurposed Candidate"}
-            </div>
-
-            {node.type === "drug" && (
-              <div style={{ display: "grid", gap: 5, fontSize: 12 }}>
-                <DetailRow label="Action Type" value={node.actionType || "Modulator"} color={node.actionType === "Inhibitor" ? "#E11D48" : "#10B981"} />
-                <DetailRow label="Clinical Phase" value={node.clinicalPhase || "Approved"} />
-                {node.cnsMpo && <DetailRow label="BBB CNS MPO" value={`${node.cnsMpo} / 6.0`} />}
-                {node.cmapScore !== undefined && <DetailRow label="CMap Reversal" value={`${node.cmapScore > 0 ? "+" : ""}${node.cmapScore}`} />}
-              </div>
-            )}
-
-            {(node.type === "protein" || node.type === "gene") && (
-              <div style={{ display: "grid", gap: 5, fontSize: 12 }}>
-                <DetailRow label="Gene Symbol" value={node.label} />
-                <DetailRow label="Relevance" value="Pathogenic Driver" />
-              </div>
-            )}
-
-            {node.type === "disease" && (
-              <div style={{ display: "grid", gap: 5, fontSize: 12 }}>
-                <DetailRow label="Disease Area" value={node.diseaseArea || "Neurology"} />
-                <DetailRow label="Candidates" value={`${node.candidateCount || 10} screened`} />
-              </div>
-            )}
-          </div>
-        );
-      }
-
-      function TripartiteSidePanel({ node, onClear, onRouteToPredict, onOpenDossier }) {
-        if (!node) {
-          return (
-            <aside className="w-full" style={{ display: "grid", gap: 16, alignContent: "start", width: "100%" }}>
-              <Panel style={{ padding: 22, borderRadius: 16, textAlign: "center", width: "100%" }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: COLORS.tealBg, color: COLORS.teal, display: "grid", placeItems: "center", margin: "0 auto 12px", fontSize: 20 }}>
-                  🔍
-                </div>
-                <h3 style={{ color: COLORS.navy, fontSize: 17, fontWeight: 800, margin: "0 0 6px" }}>
-                  Network Inspector
-                </h3>
-                <p style={{ color: COLORS.gray600, fontSize: 13, lineHeight: 1.5, margin: 0 }}>
-                  Click any node in the graph (Disease, Causal Gene, or Repurposed Drug) to view full binding affinities, CNS MPO BBB scores, and UniProt details.
-                </p>
-              </Panel>
-            </aside>
-          );
-        }
-
-        const isDrug = node.type === "drug";
-        const isGene = node.type === "protein" || node.type === "gene";
-        const isDisease = node.type === "disease";
-
-        const candidatePayload = isDrug
-          ? {
-              drug_name: node.label,
-              name: node.label,
-              clinical_status: node.clinicalPhase || "Launched",
-              action_type: node.actionType || "Modulator",
-              cns_mpo: node.cnsMpo,
-              cns_mpo_score: node.cnsMpo,
-              cmap_score: node.cmapScore,
-              composite_score: node.weight || 0.85,
-              score: node.weight || 0.85,
-              target_genes: node.targetGenes || [node.targetGene || "Target"],
-            }
-          : null;
-
-        return (
-          <aside className="w-full" style={{ display: "grid", gap: 16, alignContent: "start", width: "100%" }}>
-            <Panel style={{ padding: 22, borderRadius: 16, borderTop: `4px solid ${COLORS.tealBright}`, width: "100%" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  {isDrug ? "Candidate Compound" : isGene ? "Target Gene" : "Target Indication"}
-                </span>
-                <button
-                  onClick={onClear}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    color: COLORS.coral,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                >
-                  Clear ✕
-                </button>
-              </div>
-
-              <h3 style={{ color: COLORS.navy, fontSize: 20, fontWeight: 800, margin: "0 0 8px" }}>
-                {node.label}
-              </h3>
-
-              {isDrug && (
-                <div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-                    <DirectionalBadge actionType={node.actionType} direction={node.therapeuticDirection} />
-                    <ClinicalPhaseBadge phase={node.clinicalPhase} />
+              ) : layout.nodes.length === 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: 36, textAlign: "center" }}>
+                  <div style={{ width: 54, height: 54, borderRadius: "50%", background: COLORS.tealBg, color: COLORS.teal, display: "grid", placeItems: "center", fontSize: 24, margin: "0 auto" }}>
+                    🌐
                   </div>
-
-                  <div style={{ display: "grid", gap: 8, background: COLORS.gray50, padding: 12, borderRadius: 10, border: `1px solid ${COLORS.gray100}`, marginBottom: 14 }}>
-                    <DetailRow label="Clinical Phase" value={node.clinicalPhase || "Approved"} />
-                    {node.cnsMpo && <DetailRow label="Pfizer CNS MPO" value={`${node.cnsMpo} / 6.0 (${node.cnsBadge || "Calculated"})`} />}
-                    {node.cmapScore !== undefined && <DetailRow label="LINCS L1000 CMap" value={`${node.cmapScore > 0 ? "+" : ""}${node.cmapScore}`} />}
-                    <DetailRow label="Action Type" value={node.actionType || "Modulator"} />
+                  <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.navy }}>
+                    No Interactome Subgraph Available
                   </div>
-
-                  {onOpenDossier && candidatePayload && (
-                    <button
-                      onClick={() => onOpenDossier(candidatePayload)}
-                      style={{
-                        ...primaryButton({ width: "100%", justifyContent: "center", padding: "10px", fontSize: 13 }),
-                        marginBottom: 10,
-                      }}
-                    >
-                      Open Full Evidence Dossier →
-                    </button>
-                  )}
-
-                  <a
-                    href={`https://pubchem.ncbi.nlm.nih.gov/#query=${encodeURIComponent(node.label)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                      width: "100%",
-                      padding: "10px",
-                      background: COLORS.tealBg,
-                      color: COLORS.teal,
-                      border: `1px solid #BBF7D0`,
-                      borderRadius: 10,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      textDecoration: "none",
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    Inspect Compound on PubChem 🔍
-                  </a>
-                </div>
-              )}
-
-              {isGene && (
-                <div>
-                  <p style={{ color: COLORS.gray600, fontSize: 13.5, lineHeight: 1.5, margin: "0 0 14px" }}>
-                    Causal molecular target implicated in the genetic etiology of the target condition.
+                  <p style={{ fontSize: 13.5, color: COLORS.gray600, maxWidth: 460, margin: 0, lineHeight: 1.5 }}>
+                    No target interaction data found for this selection. Choose another target indication or drug compound above to generate the interactome.
                   </p>
-                  <a
-                    href={`https://www.uniprot.org/uniprotkb?query=${encodeURIComponent(node.label)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                      width: "100%",
-                      padding: "10px",
-                      background: "#EEF2FF",
-                      color: "#4F46E5",
-                      border: "1px solid #C7D2FE",
-                      borderRadius: 10,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      textDecoration: "none",
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    <span>View {node.label} on UniProt</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                      <polyline points="15 3 21 3 21 9" />
-                      <line x1="10" y1="14" x2="21" y2="3" />
-                    </svg>
-                  </a>
-                </div>
-              )}
-
-              {isDisease && (
-                <div>
-                  <div style={{ background: COLORS.gray50, padding: 12, borderRadius: 10, border: `1px solid ${COLORS.gray100}`, marginBottom: 14 }}>
-                    <DetailRow label="Disease Area" value={node.diseaseArea || "Neurology"} />
-                    <DetailRow label="Screened Candidates" value={`${node.candidateCount || 10} candidates`} />
-                  </div>
                   <button
-                    onClick={() => onRouteToPredict(node.label)}
-                    style={primaryButton({ width: "100%", justifyContent: "center", padding: "10px", fontSize: 13 })}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDisease("Alzheimer's Disease");
+                      setNetworkType("disease");
+                    }}
+                    style={primaryButton({ padding: "8px 18px", fontSize: 13, marginTop: 6 })}
                   >
-                    Open in Repurposing Predictor →
+                    Load Alzheimer's Disease Network
                   </button>
                 </div>
+              ) : (
+                <svg
+                  viewBox="0 0 1000 580"
+                  preserveAspectRatio="xMidYMid meet"
+                  style={{ width: "100%", height: "100%", display: "block", cursor: isDragging ? "grabbing" : "grab" }}
+                  onMouseDown={(e) => {
+                    if (e.button === 0) {
+                      setIsDragging(true);
+                      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+                    }
+                  }}
+                  onMouseMove={(e) => {
+                    if (isDragging) {
+                      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+                    }
+                  }}
+                  onMouseUp={() => setIsDragging(false)}
+                  onMouseLeave={() => setIsDragging(false)}
+                >
+                  <defs>
+                    <filter id="softGlow">
+                      <feGaussianBlur stdDeviation="6" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                    <filter id="selectedGlow">
+                      <feGaussianBlur stdDeviation="5" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+
+                  <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`} transformOrigin="500 290" style={{ transition: isDragging ? "none" : "transform 0.15s ease-out" }}>
+                    {/* Tri-Partite Column Section Headers */}
+                    <g opacity="0.65">
+                      <text x="180" y="32" textAnchor="middle" fontSize="11" fontWeight="800" fill={COLORS.navy} letterSpacing="0.06em">
+                        {networkType === "disease" ? "TARGET INDICATION" : "CONNECTED DISEASES"}
+                      </text>
+                      <text x="520" y="32" textAnchor="middle" fontSize="11" fontWeight="800" fill="#0EA5E9" letterSpacing="0.06em">
+                        CAUSAL TARGET GENES
+                      </text>
+                      <text x="820" y="32" textAnchor="middle" fontSize="11" fontWeight="800" fill="#8B5CF6" letterSpacing="0.06em">
+                        {networkType === "disease" ? "CANDIDATE DRUGS" : "ACTIVE DRUG COMPOUND"}
+                      </text>
+                      <line x1="350" y1="42" x2="350" y2="550" stroke="#CBD5E1" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
+                      <line x1="670" y1="42" x2="670" y2="550" stroke="#CBD5E1" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
+                    </g>
+
+                    {/* Render Edges */}
+                    {layout.edges.map((edge) => {
+                      const strokeColor = edge.color || (edge.actionType === "Inhibitor" ? "#E11D48" : edge.actionType === "Activator" ? "#10B981" : edge.type === "causal_association" ? "#0EA5E9" : "#8B5CF6");
+                      const isConnected = neighborIds ? (neighborIds.has(edge.source.id) && neighborIds.has(edge.target.id)) : true;
+                      const strokeOpacity = isConnected ? 0.85 : 0.12;
+
+                      return (
+                        <line
+                          key={edge.id || `${edge.source.id}-${edge.target.id}`}
+                          x1={edge.source.x}
+                          y1={edge.source.y}
+                          x2={edge.target.x}
+                          y2={edge.target.y}
+                          stroke={strokeColor}
+                          strokeWidth={isConnected ? (edge.weight ? Math.min(edge.weight * 2.8, 4) : 2) : 1}
+                          strokeDasharray={edge.type === "inferred" ? "4 3" : undefined}
+                          opacity={strokeOpacity}
+                          style={{ transition: "opacity 0.25s ease, stroke-width 0.25s ease" }}
+                        />
+                      );
+                    })}
+
+                    {/* Render Nodes */}
+                    {layout.nodes.map((node) => {
+                      const isNeighbor = neighborIds ? neighborIds.has(node.id) : true;
+                      const isSelected = selectedTarget && selectedTarget.id === node.id;
+                      const nodeOpacity = isNeighbor ? 1 : 0.18;
+
+                      let nodeFill = COLORS.purple;
+                      let nodeStroke = COLORS.purple;
+                      if (node.type === "disease") {
+                        nodeFill = "#0F172A";
+                        nodeStroke = "#0EA5E9";
+                      } else if (node.type === "protein" || node.type === "gene") {
+                        nodeFill = "#EEF2FF";
+                        nodeStroke = "#4F46E5";
+                      } else if (node.type === "drug") {
+                        if (node.actionType === "Inhibitor") {
+                          nodeFill = "#FFF1F2";
+                          nodeStroke = "#E11D48";
+                        } else if (node.actionType === "Activator") {
+                          nodeFill = "#ECFDF5";
+                          nodeStroke = "#10B981";
+                        } else {
+                          nodeFill = "#F5F3FF";
+                          nodeStroke = "#8B5CF6";
+                        }
+                      }
+
+                      return (
+                        <g
+                          key={node.id}
+                          transform={`translate(${node.x} ${node.y})`}
+                          filter={isSelected ? "url(#selectedGlow)" : undefined}
+                          opacity={nodeOpacity}
+                          style={{ transition: "opacity 0.25s ease, transform 0.4s ease", cursor: "pointer" }}
+                          onMouseEnter={(e) => moveTooltip(e, node)}
+                          onMouseMove={(e) => moveTooltip(e, node)}
+                          onMouseLeave={() => setTooltip(null)}
+                          onClick={() => setSelectedTarget(node)}
+                        >
+                          {isSelected && (
+                            <circle r={node.r + 6} fill="none" stroke={COLORS.tealBright} strokeWidth="3" strokeDasharray="3 3" />
+                          )}
+
+                          <circle
+                            r={node.r}
+                            fill={nodeFill}
+                            stroke={nodeStroke}
+                            strokeWidth={node.type === "disease" ? 3 : 2}
+                          />
+
+                          {/* Inside Circle Icon/Symbol */}
+                          <text
+                            y="4"
+                            textAnchor="middle"
+                            fontSize={node.type === "disease" ? 14 : node.type === "protein" || node.type === "gene" ? 11 : 12}
+                            fontWeight="800"
+                            fill={node.type === "disease" ? "#38BDF8" : node.type === "protein" || node.type === "gene" ? "#4F46E5" : nodeStroke}
+                          >
+                            {node.type === "disease" ? "🎯" : node.type === "protein" || node.type === "gene" ? shortLabel(node.label, 6) : "💊"}
+                          </text>
+
+                          {/* Clean Exterior Label Below Circle with Halo to Prevent Clipping */}
+                          <g transform={`translate(0, ${node.r + 14})`}>
+                            {/* Halo background outline for crisp contrast */}
+                            <text
+                              textAnchor="middle"
+                              fontSize="11"
+                              fontWeight="700"
+                              fill="none"
+                              stroke="#FFFFFF"
+                              strokeWidth="4"
+                              strokeLinejoin="round"
+                            >
+                              {shortLabel(node.label, 20)}
+                            </text>
+                            <text
+                              textAnchor="middle"
+                              fontSize="11"
+                              fontWeight="700"
+                              fill={COLORS.navy}
+                            >
+                              {shortLabel(node.label, 20)}
+                            </text>
+
+                            {/* Subtitle Badge under unclipped label */}
+                            <text
+                              y="12"
+                              textAnchor="middle"
+                              fontSize="8.5"
+                              fontWeight="600"
+                              fill={node.type === "disease" ? "#0284C7" : node.type === "protein" || node.type === "gene" ? "#4F46E5" : nodeStroke}
+                            >
+                              {node.type === "disease" ? "Indication" : node.type === "protein" || node.type === "gene" ? "Target Gene" : (node.actionType || "Candidate")}
+                            </text>
+                          </g>
+                        </g>
+                      );
+                    })}
+                  </g>
+                </svg>
               )}
-            </Panel>
-          </aside>
-        );
-      }
+
+              {tooltip && <TripartiteTooltip tooltip={tooltip} />}
+            </div>
+
+            {/* Integrated Legend: Clean bar underneath canvas so it never obscures the graph */}
+            <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs w-full">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="font-bold text-slate-800 uppercase tracking-wider text-[10px]">Edge Direction:</span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-1 bg-[#0EA5E9] rounded-sm" /><span className="text-slate-700 font-semibold">🔵 Causal Link</span></span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-1 bg-[#E11D48] rounded-sm" /><span className="text-slate-700 font-semibold">🔴 Inhibition</span></span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-1 bg-[#10B981] rounded-sm" /><span className="text-slate-700 font-semibold">🟢 Activation</span></span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-1 bg-[#8B5CF6] rounded-sm" /><span className="text-slate-700 font-semibold">🟣 Convergence</span></span>
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="font-bold text-slate-800 uppercase tracking-wider text-[10px]">Nodes:</span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#0F172A] border border-[#0EA5E9]" /><span className="text-slate-700 font-medium">Indication</span></span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#EEF2FF] border border-[#4F46E5]" /><span className="text-slate-700 font-medium">Causal Gene</span></span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#FFF1F2] border border-[#E11D48]" /><span className="text-slate-700 font-medium">Inhibitor</span></span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#ECFDF5] border border-[#10B981]" /><span className="text-slate-700 font-medium">Activator</span></span>
+              </div>
+            </div>
+          </Panel>
+        </div>
+
+        {/* Right Column: Network Inspector (Sidebar on desktop, bottom card on mobile) */}
+        <div className="w-full lg:col-span-1 min-w-0">
+          <TripartiteSidePanel
+            node={selectedTarget}
+            onClear={() => setSelectedTarget(null)}
+            onRouteToPredict={(disName) => {
+              if (setSearchContext && disName) setSearchContext({ disease: disName });
+              if (setPage) setPage("predict");
+            }}
+            onOpenDossier={(cand) => {
+              setDossierCandidate(cand);
+              setIsDossierOpen(true);
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Candidate Inspector Dossier Modal */}
+      <EvidenceDossierModal
+        isOpen={isDossierOpen && Boolean(dossierCandidate)}
+        onClose={() => {
+          setIsDossierOpen(false);
+          setDossierCandidate(null);
+        }}
+        candidate={dossierCandidate}
+        diseaseName={selectedDisease || "Target Indication"}
+      />
+    </PageShell>
+  );
+}
+
+// Layout Engine: Builds 3 vertical bands [Disease: Left (x=180)] -> [Target Genes: Middle (x=520)] -> [Drugs: Right (x=820)]
+function buildTripartiteNetworkLayout(network, interactionFilter = "All") {
+  if (!network || !network.nodes) return { nodes: [], edges: [], targets: [], primaryCount: 0, secondaryCount: 0, diseaseLinkCount: 0 };
+  const nodes = [];
+  const edges = [];
+
+  const rawDiseases = network.nodes.filter((n) => n.type === "disease");
+  const rawGenes = network.nodes.filter((n) => n.type === "protein" || n.type === "gene");
+  const rawDrugs = network.nodes.filter((n) => n.type === "drug");
+
+  // Position Disease(s) on Left Column (x = 180, 18% of 1000)
+  if (rawDiseases.length === 1) {
+    nodes.push({
+      ...rawDiseases[0],
+      x: 180,
+      y: 290,
+      r: 32,
+    });
+  } else if (rawDiseases.length > 1) {
+    const disStep = Math.min(65, 420 / Math.max(rawDiseases.length, 1));
+    const disStartY = 290 - ((rawDiseases.length - 1) * disStep) / 2;
+    rawDiseases.forEach((d, idx) => {
+      nodes.push({
+        ...d,
+        x: 180,
+        y: Math.max(70, Math.min(500, disStartY + idx * disStep)),
+        r: 24,
+      });
+    });
+  } else {
+    nodes.push({ id: "disease_target", label: "Target Disease", type: "disease", x: 180, y: 290, r: 32 });
+  }
+
+  // Apply Interaction Filter to Drugs
+  let filteredDrugs = rawDrugs;
+  if (interactionFilter === "Inhibitors") {
+    filteredDrugs = rawDrugs.filter((d) => (d.actionType || d.action_type || "").toLowerCase().includes("inhibitor"));
+  } else if (interactionFilter === "Activators") {
+    filteredDrugs = rawDrugs.filter((d) => (d.actionType || d.action_type || "").toLowerCase().includes("activator") || (d.actionType || d.action_type || "").toLowerCase().includes("agonist"));
+  }
+
+  // Clean Edge Routing & Pruning: Filter out orphaned intermediate gene nodes that have 0 connections
+  const edgeConnectedIds = new Set();
+  (network.edges || []).forEach((e) => {
+    edgeConnectedIds.add(e.source?.id || e.source);
+    edgeConnectedIds.add(e.target?.id || e.target);
+  });
+
+  const activeGenes = rawGenes.filter((g) => edgeConnectedIds.has(g.id) || rawGenes.length <= 8);
+
+  // Position Genes in Center Column (x = 520, 52% of 1000)
+  const geneStep = Math.min(60, 440 / Math.max(activeGenes.length, 1));
+  const geneStartY = 290 - ((activeGenes.length - 1) * geneStep) / 2;
+  const positionedGenes = activeGenes.map((g, idx) => ({
+    ...g,
+    x: 520,
+    y: Math.max(70, Math.min(510, geneStartY + idx * geneStep)),
+    r: 22,
+  }));
+  nodes.push(...positionedGenes);
+
+  // Position Drugs in Right Column (x = 820, 82% of 1000)
+  if (filteredDrugs.length === 1) {
+    nodes.push({
+      ...filteredDrugs[0],
+      x: 820,
+      y: 290,
+      r: 30,
+    });
+  } else {
+    const drugStep = Math.min(48, 450 / Math.max(filteredDrugs.length, 1));
+    const drugStartY = 290 - ((filteredDrugs.length - 1) * drugStep) / 2;
+    const positionedDrugs = filteredDrugs.map((d, idx) => ({
+      ...d,
+      x: 820,
+      y: Math.max(70, Math.min(510, drugStartY + idx * drugStep)),
+      r: 20,
+    }));
+    nodes.push(...positionedDrugs);
+  }
+
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+
+  // Re-link Edges with coordinate endpoints
+  (network.edges || []).forEach((e) => {
+    const src = nodeMap.get(e.source?.id || e.source);
+    const tgt = nodeMap.get(e.target?.id || e.target);
+    if (src && tgt) {
+      edges.push({
+        ...e,
+        source: src,
+        target: tgt,
+      });
+    }
+  });
+
+  return {
+    nodes,
+    edges,
+    targets: positionedGenes,
+    primaryCount: activeGenes.length,
+    secondaryCount: filteredDrugs.length,
+    diseaseLinkCount: edges.length,
+  };
+}
+
+function buildDrugNetworkLayout(network, layoutMode, maxTargets, interactionFilter) {
+  return buildTripartiteNetworkLayout(network, interactionFilter);
+}
+
+function shortLabel(text, max = 12) {
+  if (!text) return "";
+  const s = String(text);
+  return s.length > max ? s.slice(0, max - 1) + "…" : s;
+}
+
+function DetailRow({ label, value, color }) {
+  if (value === undefined || value === null) return null;
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, fontSize: 12 }}>
+      <span style={{ color: COLORS.gray600, fontWeight: 600 }}>{label}:</span>
+      <span style={{ color: color || COLORS.navy, fontWeight: 700, textAlign: "right" }}>{value}</span>
+    </div>
+  );
+}
+
+function TripartiteTooltip({ tooltip }) {
+  const node = tooltip.node;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: tooltip.x,
+        top: tooltip.y,
+        width: 260,
+        zIndex: 20,
+        background: COLORS.white,
+        border: `1px solid ${COLORS.gray200}`,
+        borderRadius: 12,
+        padding: "14px 16px",
+        boxShadow: "0 14px 36px rgba(6, 24, 43, 0.2)",
+        pointerEvents: "none",
+        color: COLORS.gray800,
+      }}
+    >
+      <div style={{ color: COLORS.navy, fontSize: 16, fontWeight: 800, marginBottom: 6 }}>
+        {node.label}
+      </div>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: COLORS.teal, marginBottom: 8 }}>
+        Role: {node.type === "disease" ? "Target Indication" : node.type === "protein" || node.type === "gene" ? "Causal Target Gene" : "Repurposed Candidate"}
+      </div>
+
+      {node.type === "drug" && (
+        <div style={{ display: "grid", gap: 5, fontSize: 12 }}>
+          <DetailRow label="Action Type" value={node.actionType || "Modulator"} color={node.actionType === "Inhibitor" ? "#E11D48" : "#10B981"} />
+          <DetailRow label="Clinical Phase" value={node.clinicalPhase || "Approved"} />
+          {node.cnsMpo && <DetailRow label="BBB CNS MPO" value={`${node.cnsMpo} / 6.0`} />}
+          {node.cmapScore !== undefined && <DetailRow label="CMap Reversal" value={`${node.cmapScore > 0 ? "+" : ""}${node.cmapScore}`} />}
+        </div>
+      )}
+
+      {(node.type === "protein" || node.type === "gene") && (
+        <div style={{ display: "grid", gap: 5, fontSize: 12 }}>
+          <DetailRow label="Gene Symbol" value={node.label} />
+          <DetailRow label="Relevance" value="Pathogenic Driver" />
+        </div>
+      )}
+
+      {node.type === "disease" && (
+        <div style={{ display: "grid", gap: 5, fontSize: 12 }}>
+          <DetailRow label="Disease Area" value={node.diseaseArea || "Neurology"} />
+          <DetailRow label="Candidates" value={`${node.candidateCount || 10} screened`} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TripartiteSidePanel({ node, onClear, onRouteToPredict, onOpenDossier }) {
+  if (!node) {
+    return (
+      <aside className="w-full" style={{ display: "grid", gap: 16, alignContent: "start", width: "100%" }}>
+        <Panel style={{ padding: 22, borderRadius: 16, textAlign: "center", width: "100%" }}>
+          <div style={{ width: 48, height: 48, borderRadius: "50%", background: COLORS.tealBg, color: COLORS.teal, display: "grid", placeItems: "center", margin: "0 auto 12px", fontSize: 20 }}>
+            🔍
+          </div>
+          <h3 style={{ color: COLORS.navy, fontSize: 17, fontWeight: 800, margin: "0 0 6px" }}>
+            Network Inspector
+          </h3>
+          <p style={{ color: COLORS.gray600, fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+            Click any node in the graph (Disease, Causal Gene, or Repurposed Drug) to view full binding affinities, CNS MPO BBB scores, and UniProt details.
+          </p>
+        </Panel>
+      </aside>
+    );
+  }
+
+  const isDrug = node.type === "drug";
+  const isGene = node.type === "protein" || node.type === "gene";
+  const isDisease = node.type === "disease";
+
+  const candidatePayload = isDrug
+    ? {
+      drug_name: node.label,
+      name: node.label,
+      clinical_status: node.clinicalPhase || "Launched",
+      action_type: node.actionType || "Modulator",
+      cns_mpo: node.cnsMpo,
+      cns_mpo_score: node.cnsMpo,
+      cmap_score: node.cmapScore,
+      composite_score: node.weight || 0.85,
+      score: node.weight || 0.85,
+      target_genes: node.targetGenes || [node.targetGene || "Target"],
+    }
+    : null;
+
+  return (
+    <aside className="w-full" style={{ display: "grid", gap: 16, alignContent: "start", width: "100%" }}>
+      <Panel style={{ padding: 22, borderRadius: 16, borderTop: `4px solid ${COLORS.tealBright}`, width: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            {isDrug ? "Candidate Compound" : isGene ? "Target Gene" : "Target Indication"}
+          </span>
+          <button
+            onClick={onClear}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: COLORS.coral,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            Clear ✕
+          </button>
+        </div>
+
+        <h3 style={{ color: COLORS.navy, fontSize: 20, fontWeight: 800, margin: "0 0 8px" }}>
+          {node.label}
+        </h3>
+
+        {isDrug && (
+          <div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+              <DirectionalBadge actionType={node.actionType} direction={node.therapeuticDirection} />
+              <ClinicalPhaseBadge phase={node.clinicalPhase} />
+            </div>
+
+            <div style={{ display: "grid", gap: 8, background: COLORS.gray50, padding: 12, borderRadius: 10, border: `1px solid ${COLORS.gray100}`, marginBottom: 14 }}>
+              <DetailRow label="Clinical Phase" value={node.clinicalPhase || "Approved"} />
+              {node.cnsMpo && <DetailRow label="Pfizer CNS MPO" value={`${node.cnsMpo} / 6.0 (${node.cnsBadge || "Calculated"})`} />}
+              {node.cmapScore !== undefined && <DetailRow label="LINCS L1000 CMap" value={`${node.cmapScore > 0 ? "+" : ""}${node.cmapScore}`} />}
+              <DetailRow label="Action Type" value={node.actionType || "Modulator"} />
+            </div>
+
+            {onOpenDossier && candidatePayload && (
+              <button
+                onClick={() => onOpenDossier(candidatePayload)}
+                style={{
+                  ...primaryButton({ width: "100%", justifyContent: "center", padding: "10px", fontSize: 13 }),
+                  marginBottom: 10,
+                }}
+              >
+                Open Full Evidence Dossier →
+              </button>
+            )}
+
+            <a
+              href={`https://pubchem.ncbi.nlm.nih.gov/#query=${encodeURIComponent(node.label)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                width: "100%",
+                padding: "10px",
+                background: COLORS.tealBg,
+                color: COLORS.teal,
+                border: `1px solid #BBF7D0`,
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 700,
+                textDecoration: "none",
+                boxSizing: "border-box",
+              }}
+            >
+              Inspect Compound on PubChem 🔍
+            </a>
+          </div>
+        )}
+
+        {isGene && (
+          <div>
+            <p style={{ color: COLORS.gray600, fontSize: 13.5, lineHeight: 1.5, margin: "0 0 14px" }}>
+              Causal molecular target implicated in the genetic etiology of the target condition.
+            </p>
+            <a
+              href={`https://www.uniprot.org/uniprotkb?query=${encodeURIComponent(node.label)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                width: "100%",
+                padding: "10px",
+                background: "#EEF2FF",
+                color: "#4F46E5",
+                border: "1px solid #C7D2FE",
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 700,
+                textDecoration: "none",
+                boxSizing: "border-box",
+              }}
+            >
+              <span>View {node.label} on UniProt</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
+          </div>
+        )}
+
+        {isDisease && (
+          <div>
+            <div style={{ background: COLORS.gray50, padding: 12, borderRadius: 10, border: `1px solid ${COLORS.gray100}`, marginBottom: 14 }}>
+              <DetailRow label="Disease Area" value={node.diseaseArea || "Neurology"} />
+              <DetailRow label="Screened Candidates" value={`${node.candidateCount || 10} candidates`} />
+            </div>
+            <button
+              onClick={() => onRouteToPredict(node.label)}
+              style={primaryButton({ width: "100%", justifyContent: "center", padding: "10px", fontSize: 13 })}
+            >
+              Open in Repurposing Predictor →
+            </button>
+          </div>
+        )}
+      </Panel>
+    </aside>
+  );
+}
 
 function OrphaAvatar({ size = 42 }) {
   return (
@@ -4450,7 +4387,10 @@ export default function OrphaAI() {
   );
 
   return (
-    <div style={{ fontFamily: "var(--font-sans)", background: COLORS.gray50, minHeight: "100vh" }}>
+    <div
+      className="min-h-screen pt-[env(safe-area-inset-top,0px)] pb-[calc(4.5rem+env(safe-area-inset-bottom,16px))] md:pb-0"
+      style={{ fontFamily: "var(--font-sans)", background: COLORS.gray50 }}
+    >
       <NavBar page={page} setPage={setPage} user={user} logout={logout} />
       {page === "home" && <HeroPage setPage={setPage} setSearchContext={setSearchContext} />}
       {page === "predict" && protect(<PredictPage user={user} setPage={setPage} searchContext={searchContext} setSearchContext={setSearchContext} />)}
