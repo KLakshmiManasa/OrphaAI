@@ -38,6 +38,7 @@ def generate_repurposing_pdf_dossier(data: dict) -> bytes:
     # Custom Color Palette
     navy = colors.HexColor("#06182B")
     teal = colors.HexColor("#0F6E56")
+    slate_blue = colors.HexColor("#1E3A8A")
     gray_bg = colors.HexColor("#F8FAFC")
     gray_border = colors.HexColor("#CBD5E1")
 
@@ -75,8 +76,8 @@ def generate_repurposing_pdf_dossier(data: dict) -> bytes:
         "BodyTextCustom",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=9,
-        leading=13,
+        fontSize=8.5,
+        leading=12,
         textColor=colors.HexColor("#1E293B"),
     )
 
@@ -95,6 +96,9 @@ def generate_repurposing_pdf_dossier(data: dict) -> bytes:
     mesh_id = data.get("mesh_id") or "MeSH:D010300"
     candidates = data.get("candidates") or []
 
+    soc_candidates = [c for c in candidates if c.get("is_standard_of_care") or c.get("isStandardOfCare")]
+    repurposed_candidates = [c for c in candidates if not (c.get("is_standard_of_care") or c.get("isStandardOfCare"))]
+
     # 1. Header Block
     story.append(Paragraph("OrphaAI — Preliminary Drug Repurposing Report", title_style))
     story.append(Paragraph(f"Report ID: {report_id} &nbsp;|&nbsp; Generated: {timestamp}", subtitle_style))
@@ -108,8 +112,8 @@ def generate_repurposing_pdf_dossier(data: dict) -> bytes:
             Paragraph(f"<b>Ontology ID:</b> {mesh_id}", body_style),
         ],
         [
-            Paragraph("<b>Primary Pathogenic Targets:</b> TH, DDC, DRD2, DRD3, GBA, GLP1R, SNCA, MTOR", body_style),
-            Paragraph(f"<b>Total Candidates Ranked:</b> {len(candidates)}", body_style),
+            Paragraph(f"<b>Primary Standard of Care Drugs:</b> {len(soc_candidates)}", body_style),
+            Paragraph(f"<b>Novel Repurposed Hypotheses:</b> {len(repurposed_candidates)}", body_style),
         ],
     ]
     summary_table = Table(summary_data, colWidths=[270, 270])
@@ -122,62 +126,89 @@ def generate_repurposing_pdf_dossier(data: dict) -> bytes:
     story.append(summary_table)
     story.append(Spacer(1, 12))
 
-    # 3. Top Ranked Candidates Table
-    story.append(Paragraph("1. Computational Drug Repurposing Candidates", heading2_style))
-
-    table_data = [
-        ["Rank", "Drug Name", "Clinical Phase", "Key Target Genes", "Mechanism of Action", "Composite Score"]
-    ]
-
-    for cand in candidates[:10]:
-        r_idx = str(cand.get("rank", "-"))
-        d_name = str(cand.get("drug_name") or cand.get("name") or "Unknown")
-        phase = str(cand.get("clinical_phase") or cand.get("evidence_tier") or "Investigational")
-        targets = str(cand.get("target_genes") or cand.get("targets") or "N/A")
-
-        if isinstance(cand.get("target_metrics"), dict):
-            shared = cand["target_metrics"].get("shared_targets")
-            if shared:
-                targets = ", ".join(shared)
-
-        moa = str(cand.get("mechanism_of_action") or cand.get("mechanism") or "N/A")
-        if len(moa) > 65:
-            moa = moa[:62] + "..."
-
-        score = f"{cand.get('composite_score', 0.85):.2f}"
-
-        table_data.append([
-            Paragraph(r_idx, body_style),
-            Paragraph(f"<b>{d_name}</b>", body_style),
-            Paragraph(phase, body_style),
-            Paragraph(targets, body_style),
-            Paragraph(moa, body_style),
-            Paragraph(f"<b>{score}</b>", body_style),
-        ])
-
-    cand_table = Table(table_data, colWidths=[34, 85, 85, 95, 182, 59])
-    cand_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), navy),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 8.5),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 5),
-        ('TOPPADDING', (0, 0), (-1, 0), 5),
-        ('GRID', (0, 0), (-1, -1), 0.5, gray_border),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, gray_bg]),
-    ]))
-    story.append(cand_table)
+    # 3. Primary Standard of Care Section
+    story.append(Paragraph("1. Primary Standard of Care & Established Baseline Therapies", heading2_style))
+    if soc_candidates:
+        soc_table_data = [
+            ["Drug Name", "Clinical Status", "Established Indication", "Target Genes", "Mechanism of Action"]
+        ]
+        for cand in soc_candidates[:8]:
+            d_name = str(cand.get("drug_name") or cand.get("name") or "Drug")
+            phase = str(cand.get("clinical_phase") or cand.get("evidence_tier") or "Approved / Launched")
+            orig = str(cand.get("original_indication") or cand.get("originalIndication") or disease_name)
+            targets = str(cand.get("target_genes") or cand.get("targets") or "N/A")
+            moa = str(cand.get("mechanism_of_action") or cand.get("mechanism") or "N/A")
+            if len(moa) > 60:
+                moa = moa[:57] + "..."
+            soc_table_data.append([
+                Paragraph(f"<b>{d_name}</b>", body_style),
+                Paragraph(phase, body_style),
+                Paragraph(orig, body_style),
+                Paragraph(targets, body_style),
+                Paragraph(moa, body_style),
+            ])
+        soc_table = Table(soc_table_data, colWidths=[95, 85, 125, 95, 140])
+        soc_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), slate_blue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, gray_border),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, gray_bg]),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('PADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(soc_table)
+    else:
+        story.append(Paragraph("<i>No standard of care baseline recorded for this indication; all candidates represent novel repurposing hypotheses.</i>", body_style))
     story.append(Spacer(1, 14))
 
-    # 4. ADMET & Chemical Summary for Top 3 Candidates
-    story.append(Paragraph("2. Physicochemical & ADMET Profile (Top 3 Candidates)", heading2_style))
+    # 4. Novel Repurposing Candidates Section
+    story.append(Paragraph("2. Novel Repurposing Candidates (AI Ranked)", heading2_style))
+    if repurposed_candidates:
+        rep_table_data = [
+            ["Rank", "Drug Name", "Original Primary Indication", "Target Genes", "Mechanism of Action", "Repurposing Score"]
+        ]
+        for cand in repurposed_candidates[:12]:
+            r_idx = str(cand.get("rank", "-"))
+            d_name = str(cand.get("drug_name") or cand.get("name") or "Unknown")
+            orig = str(cand.get("original_indication") or cand.get("originalIndication") or cand.get("disease_area") or "Off-Label")
+            targets = str(cand.get("target_genes") or cand.get("targets") or "N/A")
+            moa = str(cand.get("mechanism_of_action") or cand.get("mechanism") or "N/A")
+            if len(moa) > 60:
+                moa = moa[:57] + "..."
+            score = f"{cand.get('composite_score', 0.85):.2f}"
+            rep_table_data.append([
+                Paragraph(r_idx, body_style),
+                Paragraph(f"<b>{d_name}</b>", body_style),
+                Paragraph(orig, body_style),
+                Paragraph(targets, body_style),
+                Paragraph(moa, body_style),
+                Paragraph(f"<b>{score}</b>", body_style),
+            ])
+        rep_table = Table(rep_table_data, colWidths=[30, 85, 130, 95, 145, 55])
+        rep_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), teal),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, gray_border),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, gray_bg]),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('PADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(rep_table)
+    else:
+        story.append(Paragraph("<i>All evaluated compounds match established clinical standard of care for this query.</i>", body_style))
+    story.append(Spacer(1, 14))
 
+    # 5. ADMET & Chemical Summary for Top Candidates
+    story.append(Paragraph("3. Physicochemical & ADMET Profile (Top Repurposed Candidates)", heading2_style))
     admet_data = [
         ["Drug Name", "MW (g/mol)", "LogP", "TPSA (Å²)", "HBD / HBA", "Rule of 5 Status"]
     ]
-
-    for cand in candidates[:3]:
+    eval_candidates = repurposed_candidates if repurposed_candidates else candidates
+    for cand in eval_candidates[:3]:
         d_name = str(cand.get("drug_name") or cand.get("name") or "Drug")
         props = cand.get("molecular_properties") or {}
         mw = f"{props.get('mw', 280.0):.1f}"
@@ -197,7 +228,7 @@ def generate_repurposing_pdf_dossier(data: dict) -> bytes:
 
     admet_table = Table(admet_data, colWidths=[110, 85, 75, 85, 95, 90])
     admet_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), teal),
+        ('BACKGROUND', (0, 0), (-1, 0), navy),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 8.5),
@@ -209,26 +240,22 @@ def generate_repurposing_pdf_dossier(data: dict) -> bytes:
     story.append(admet_table)
     story.append(Spacer(1, 14))
 
-    # 5. LINCS L1000 Transcriptomic Signature Reversal Table
-    story.append(Paragraph("3. LINCS L1000 Transcriptomic Signature Reversal (CMap)", heading2_style))
-
+    # 6. LINCS L1000 Transcriptomic Signature Reversal Table
+    story.append(Paragraph("4. LINCS L1000 Transcriptomic Signature Reversal (CMap)", heading2_style))
     tx_data = [
         ["Drug Name", "CMap Reversal Score", "Status / Classification", "Top Reversed Differentially Expressed Targets"]
     ]
-
-    for cand in candidates[:5]:
+    for cand in eval_candidates[:5]:
         d_name = str(cand.get("drug_name") or cand.get("name") or "Drug")
         tx = cand.get("transcriptomics") or cand.get("transcriptomicReversal") or {}
         score_val = tx.get("reversal_score", cand.get("transcriptomic_reversal_score", 0.78))
         sign = "+" if score_val > 0 else ""
         c_score = f"{sign}{score_val:.2f}"
         cat = tx.get("category", "High Reversal")
-        
         rev_targets = tx.get("top_reversed_targets") or {}
         supp = ", ".join(rev_targets.get("suppressed_upregulated") or ["CASP3", "IL1B"])
         act = ", ".join(rev_targets.get("activated_downregulated") or ["BDNF", "SLC1A2"])
         target_str = f"&darr; Suppressed (G-Up): {supp}<br/>&uarr; Activated (G-Down): {act}"
-
         tx_data.append([
             Paragraph(f"<b>{d_name}</b>", body_style),
             Paragraph(f"<b>{c_score}</b>", body_style),
@@ -250,7 +277,7 @@ def generate_repurposing_pdf_dossier(data: dict) -> bytes:
     story.append(tx_table)
     story.append(Spacer(1, 16))
 
-    # 5. Mandatory Institutional Disclaimer Box
+    # 7. Mandatory Institutional Disclaimer Box
     disclaimer_p = Paragraph(
         "<b>MANDATORY INSTITUTIONAL DISCLAIMER:</b> For Research Use Only (RUO). In silico computational "
         "predictions generated by OrphaAI require in vitro and in vivo experimental validation prior to any clinical translation.",

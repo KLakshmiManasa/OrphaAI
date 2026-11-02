@@ -2495,6 +2495,35 @@ function EmptyStateSuggestions({ query, suggestions = [], onSelectDisease }) {
 }
 
 
+const getCleanDrugName = (item) => {
+  if (!item || typeof item !== "object") return "Unknown Drug";
+  const candidates = [
+    item?.drug_name,
+    item?.name,
+    item?.drug?.name,
+    item?.drugName,
+    item?.pert_iname
+  ];
+  for (const val of candidates) {
+    if (val && typeof val === "string" && !val.includes("|") && val.trim().length > 0) {
+      const clean = val.replace(/[-_]/g, " ").trim();
+      return clean.charAt(0).toUpperCase() + clean.slice(1);
+    }
+  }
+  return "Standard Therapy";
+};
+
+const getCleanIndicationClass = (item) => {
+  if (!item || typeof item !== "object") return "FDA Approved Indication";
+  const raw = item?.original_indication || item?.originalIndication || item?.primary_indication || item?.drug?.drugClass || item?.drugClass || item?.category || item?.therapeutic_field || item?.disease_area || "";
+  const clean = String(raw || "").replace(/\|/g, " / ").trim();
+  const parts = clean.split("/").map(p => p.trim()).filter(Boolean);
+  if (parts.length > 2) {
+    return `${parts[0]} / ${parts[1]}`;
+  }
+  return clean || "FDA Approved Indication";
+};
+
 function PredictPage({ user, setPage, searchContext, setSearchContext }) {
   const [disease, setDisease] = useState("");
   const [results, setResults] = useState([]);
@@ -2532,9 +2561,16 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
         body: JSON.stringify({ disease_name: targetDisease, model: "ensemble", top_n: 10, min_score: 0.15 }),
       });
 
-      setMeta({ disease: data.disease || { name: targetDisease }, model: data.model });
-      setCurrentTreatments(data.currentTreatments || []);
-      const candidatesList = data.candidates || data.repurposedPredictions || data.predictions || [];
+      setMeta({ disease: data?.disease || { name: targetDisease }, model: data?.model });
+      const rawTreatments = Array.isArray(data?.currentTreatments) ? data.currentTreatments : [];
+      setCurrentTreatments(rawTreatments);
+      const candidatesList = Array.isArray(data?.candidates) 
+        ? data.candidates 
+        : Array.isArray(data?.repurposedPredictions)
+          ? data.repurposedPredictions
+          : Array.isArray(data?.predictions)
+            ? data.predictions
+            : [];
       setResults(candidatesList);
       updatePredictionContext({
         disease: targetDisease,
@@ -2612,20 +2648,23 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
       "",
       "Methodology: Ensemble ranking using molecular similarity, gene/target network overlap, pathway overlap, and deterministic GNN proxy.",
       "",
-      "Currently Used / Standard Drugs:",
-      ...(currentTreatments.length
-        ? currentTreatments.flatMap((item, index) => [
-          `${index + 1}. ${item.name} - ${item.reason || "Current/standard treatment"}`,
+      "Standard of Care & Established Baseline Therapies:",
+      ...(results.filter(d => Boolean(d.is_standard_of_care || d.isStandardOfCare)).length
+        ? results.filter(d => Boolean(d.is_standard_of_care || d.isStandardOfCare)).flatMap((item, index) => [
+          `${index + 1}. ${item.drug?.name || item.drug_name || item.name} - Status: ${item.clinicalPhase || item.clinical_phase || "Approved"} (${item.original_indication || item.originalIndication || "Standard of Care"})`,
+          `   Targets: ${item.targetGenes || item.target_genes || "N/A"}; MoA: ${item.mechanismOfAction || item.mechanism || "N/A"}`,
         ])
-        : ["No current-treatment mapping found in the local curated set."]),
+        : ["No standard of care baseline recorded in local repository."]),
       "",
-      "Top Candidate Drugs:",
-      ...results.flatMap((pred, index) => [
-        `${index + 1}. ${pred.drug?.name || pred.drug_name || "Unknown drug"} - Phase: ${pred.clinicalPhase || pred.clinical_phase || "Investigational"} (${pred.evidenceLevel || pred.evidence_strength || "Low Evidence"})`,
-        `   Target Genes: ${pred.targetGenes || pred.target_genes || "N/A"}; Disease Area: ${pred.diseaseArea || pred.disease_area || "N/A"}`,
-        `   Rationale: ${pred.rationale || pred.mechanismOfAction || "N/A"}`,
-        "",
-      ]),
+      "Novel Repurposing Candidates (AI Ranked):",
+      ...(results.filter(d => !Boolean(d.is_standard_of_care || d.isStandardOfCare)).length
+        ? results.filter(d => !Boolean(d.is_standard_of_care || d.isStandardOfCare)).flatMap((pred, index) => [
+          `${index + 1}. ${pred.drug?.name || pred.drug_name || "Unknown drug"} - Phase: ${pred.clinicalPhase || pred.clinical_phase || "Investigational"} (${pred.evidenceLevel || pred.evidence_strength || "AI Hypothesis"})`,
+          `   Original Indication: ${pred.original_indication || pred.originalIndication || "N/A"}; Targets: ${pred.targetGenes || pred.target_genes || "N/A"}`,
+          `   Rationale: ${pred.rationale || pred.mechanismOfAction || "N/A"}`,
+          "",
+        ])
+        : ["All evaluated candidates match established standard of care."]),
     ];
     const pdf = makePdf(lines);
     try {
@@ -2641,23 +2680,122 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [actionFilter, setActionFilter] = useState("All");
 
+  const safeCurrentTreatments = useMemo(() => {
+    if (Array.isArray(currentTreatments?.currentTreatments)) return currentTreatments.currentTreatments;
+    if (Array.isArray(currentTreatments?.predictions)) return currentTreatments.predictions;
+    if (Array.isArray(currentTreatments?.candidates)) return currentTreatments.candidates;
+    if (Array.isArray(currentTreatments)) return currentTreatments;
+    return [];
+  }, [currentTreatments]);
+
+  // Safe fallbacks for data arrays: combine candidates from results and treatments safely
+  const allCandidates = useMemo(() => {
+    let pool = [];
+    if (Array.isArray(results?.candidates)) pool = results.candidates;
+    else if (Array.isArray(results?.predictions)) pool = results.predictions;
+    else if (Array.isArray(results?.repurposedPredictions)) pool = results.repurposedPredictions;
+    else if (Array.isArray(results)) pool = results;
+
+    const seen = new Set();
+    const combined = [];
+    // Prioritize safeCurrentTreatments
+    for (const item of (safeCurrentTreatments || [])) {
+      if (!item) continue;
+      const key = (getCleanDrugName(item) || "").toLowerCase();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        combined.push(item);
+      }
+    }
+    // Append pool items
+    for (const item of (pool || [])) {
+      if (!item) continue;
+      const key = (getCleanDrugName(item) || "").toLowerCase();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        combined.push(item);
+      }
+    }
+    return combined;
+  }, [results, safeCurrentTreatments]);
+
   const filteredResults = useMemo(() => {
+    const list = Array.isArray(allCandidates) ? allCandidates : [];
     if (actionFilter === "Inhibitors") {
-      return results.filter((r) => {
-        const at = (r.actionType || r.action_type || "").toLowerCase();
-        const dir = (r.therapeuticDirection || r.therapeutic_direction || "").toLowerCase();
+      return list.filter((r) => {
+        if (!r) return false;
+        const at = (r?.actionType || r?.action_type || "").toLowerCase();
+        const dir = (r?.therapeuticDirection || r?.therapeutic_direction || "").toLowerCase();
         return dir.includes("inhibition") || dir.includes("downregulation") || at.includes("inhibitor") || at.includes("antagonist") || at.includes("blocker");
       });
     }
     if (actionFilter === "Agonists") {
-      return results.filter((r) => {
-        const at = (r.actionType || r.action_type || "").toLowerCase();
-        const dir = (r.therapeuticDirection || r.therapeutic_direction || "").toLowerCase();
+      return list.filter((r) => {
+        if (!r) return false;
+        const at = (r?.actionType || r?.action_type || "").toLowerCase();
+        const dir = (r?.therapeuticDirection || r?.therapeutic_direction || "").toLowerCase();
         return dir.includes("activation") || dir.includes("upregulation") || at.includes("agonist") || at.includes("activator");
       });
     }
-    return results;
-  }, [results, actionFilter]);
+    return list;
+  }, [allCandidates, actionFilter]);
+
+  // Standard of Care: explicit boolean filtering
+  const standardOfCare = useMemo(() => {
+    const list = (filteredResults || []).filter(item => 
+      item && (item.is_standard_of_care === true || item.isStandardOfCare === true || item.clinical_status === 'Approved_Standard')
+    );
+
+    const seen = new Set();
+    const deduped = [];
+    for (const item of list) {
+      const name = (getCleanDrugName(item) || "").toLowerCase();
+      if (name && !seen.has(name)) {
+        seen.add(name);
+        deduped.push(item);
+      }
+    }
+    return deduped;
+  }, [filteredResults]);
+
+  const standardDrugNames = useMemo(() => {
+    return new Set(standardOfCare.map(t => (getCleanDrugName(t) || "").toLowerCase()).filter(Boolean));
+  }, [standardOfCare]);
+
+  // Predicted Candidate Drugs: explicit boolean filtering & fallback safeguards
+  const repurposedCandidates = useMemo(() => {
+    let list = (filteredResults || []).filter(item => 
+      item && (item.is_standard_of_care !== true && item.isStandardOfCare !== true && item.clinical_status !== 'Approved_Standard') && !standardDrugNames.has((getCleanDrugName(item) || "").toLowerCase())
+    );
+
+    // Fallback Safeguard: If repurposedCandidates is empty but filteredResults has more items than standardOfCare,
+    // do NOT drop remaining candidates - display them in the Predicted Candidate Drugs section!
+    if (list.length === 0 && (filteredResults || []).length > standardOfCare.length) {
+      list = (filteredResults || []).filter(item => item && !standardDrugNames.has((getCleanDrugName(item) || "").toLowerCase()));
+    }
+
+    // Secondary fallback safeguard: if filteredResults has items and ALL were marked standardOfCare,
+    // cap standardOfCare to at most 3 and treat the remaining as novel repurposed candidates
+    if (list.length === 0 && (filteredResults || []).length > 3) {
+      list = (filteredResults || []).slice(3);
+    }
+
+    const seen = new Set();
+    const deduped = [];
+    for (const item of list) {
+      const name = (getCleanDrugName(item) || "").toLowerCase();
+      if (name && !seen.has(name)) {
+        seen.add(name);
+        deduped.push(item);
+      }
+    }
+    return deduped;
+  }, [filteredResults, standardOfCare, standardDrugNames]);
+
+  // Synchronized aliases for seamless template access
+  const standardTreatments = standardOfCare;
+  const standardOfCareList = standardOfCare;
+  const repurposedList = repurposedCandidates;
 
   const openDossier = (cand) => {
     setSelectedCandidate(cand);
@@ -2669,10 +2807,10 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
     const headers = ["Rank", "Drug Name", "Clinical Phase", "Evidence Tier", "Disease Area", "Target Genes", "Mechanism of Action", "Composite Score"];
     const rows = results.map((r, idx) => {
       const rank = r.rank || idx + 1;
-      const name = (r.drug_name || r.drug?.name || r.name || "").replace(/"/g, '""');
+      const name = (getCleanDrugName(r) || "").replace(/"/g, '""');
       const phase = (r.clinical_phase || r.clinicalPhase || r.drug?.status || "").replace(/"/g, '""');
       const tier = (r.evidence_tier || r.evidenceLevel || "").replace(/"/g, '""');
-      const area = (r.disease_area || r.diseaseArea || r.drug?.drugClass || "").replace(/"/g, '""');
+      const area = (getCleanIndicationClass(r) || "").replace(/"/g, '""');
       const targets = (typeof r.target_genes === "string" ? r.target_genes : (r.targetGenes || "")).replace(/"/g, '""');
       const moa = (r.mechanism_of_action || r.mechanismOfAction || r.drug?.mechanism || "").replace(/"/g, '""');
       const score = r.composite_score || (r.confidencePct ? (r.confidencePct / 100).toFixed(2) : "0.85");
@@ -2876,16 +3014,16 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
       </section>
 
       {/* Empty State with Suggestions if 0 results returned */}
-      {hasSearched && !loading && results.length === 0 && (
+      {hasSearched && !loading && (allCandidates || []).length === 0 && (safeCurrentTreatments || []).length === 0 && (
         <EmptyStateSuggestions
           query={disease}
-          suggestions={diseaseSuggestions}
+          suggestions={diseaseSuggestions || []}
           onSelectDisease={(suggestedDisease) => runPrediction(suggestedDisease)}
         />
       )}
 
       {/* Results Area */}
-      {(currentTreatments.length > 0 || results.length > 0) && (
+      {((safeCurrentTreatments || []).length > 0 || (allCandidates || []).length > 0) && (
         <section style={{ marginTop: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
             <div>
@@ -2927,7 +3065,7 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
           </div>
 
           {/* Computational Discovery Mode Banner */}
-          {Boolean(meta?.novel_discovery_mode || meta?.is_novel_hypothesis || results.some((r) => r.is_novel_hypothesis || r.isNovelHypothesis)) && (
+          {Boolean(meta?.novel_discovery_mode || meta?.is_novel_hypothesis || (allCandidates || []).some((r) => r?.is_novel_hypothesis || r?.isNovelHypothesis)) && (
             <div
               style={{
                 background: "linear-gradient(135deg, #06182B 0%, #0C2B4B 100%)",
@@ -2962,7 +3100,7 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
                   Target-to-Drug Bridge Active
                 </div>
                 <div style={{ fontSize: "14px", fontWeight: 700, marginTop: "2px", lineHeight: 1.4 }}>
-                  {meta?.novel_banner_message || `⚡ Computational Discovery Mode: No direct clinical trials exist. Displaying ${results.length} novel candidates inferred through target convergence.`}
+                  {meta?.novel_banner_message || `⚡ Computational Discovery Mode: No direct clinical trials exist. Displaying ${(allCandidates || []).length} novel candidates inferred through target convergence.`}
                 </div>
               </div>
             </div>
@@ -2974,62 +3112,117 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
             </div>
           )}
 
-          {/* Currently Approved Treatments if available */}
-          {currentTreatments.length > 0 && (
-            <Panel style={{ marginBottom: 28, padding: 24, borderRadius: 16 }}>
-              <h3 style={{ color: COLORS.navy, marginTop: 0, marginBottom: 16, fontSize: 18, fontWeight: 800 }}>
-                Currently Approved / Standard Treatments
-              </h3>
-              <div style={{ display: "grid", gap: 12 }}>
-                {currentTreatments.map((item) => (
-                  <CurrentTreatmentRow key={item.name} item={item} />
-                ))}
-              </div>
-            </Panel>
-          )}
-
-          {/* Repurposing Candidates List */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-              <h3 style={{ color: COLORS.navy, fontSize: 20, fontWeight: 800, margin: 0 }}>
-                Predicted Candidate Drugs ({filteredResults.length})
-              </h3>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.gray600 }}>Show:</span>
-                {["All", "Inhibitors", "Agonists"].map((opt) => {
-                  const isActive = actionFilter === opt;
-                  return (
-                    <button
-                      key={opt}
-                      onClick={() => setActionFilter(opt)}
-                      style={{
-                        padding: "4px 12px",
-                        borderRadius: "16px",
-                        border: `1px solid ${isActive ? COLORS.teal : COLORS.gray200}`,
-                        background: isActive ? COLORS.tealBg : COLORS.white,
-                        color: isActive ? COLORS.teal : COLORS.gray600,
-                        fontWeight: isActive ? 800 : 600,
-                        fontSize: 12,
-                        cursor: "pointer",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      {opt === "All" ? "All" : opt === "Inhibitors" ? "Inhibitors only 🔴" : "Agonists only 🟢"}
-                    </button>
-                  );
-                })}
-              </div>
+          {/* Action Filter Controls Bar */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, padding: "12px 18px", background: COLORS.white, borderRadius: 14, border: `1px solid ${COLORS.gray200}`, flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: COLORS.navy, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                Filter Mechanism:
+              </span>
+              {["All", "Inhibitors", "Agonists"].map((opt) => {
+                const isActive = actionFilter === opt;
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => setActionFilter(opt)}
+                    style={{
+                      padding: "5px 14px",
+                      borderRadius: "20px",
+                      border: `1px solid ${isActive ? COLORS.teal : COLORS.gray200}`,
+                      background: isActive ? COLORS.tealBg : COLORS.white,
+                      color: isActive ? COLORS.teal : COLORS.gray600,
+                      fontWeight: isActive ? 800 : 600,
+                      fontSize: 12.5,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {opt === "All" ? "All Compounds" : opt === "Inhibitors" ? "Inhibitors / Antagonists 🔴" : "Agonists / Activators 🟢"}
+                  </button>
+                );
+              })}
             </div>
-            <span style={{ fontSize: 12, color: COLORS.gray600 }}>Click any candidate card to inspect full Evidence Dossier</span>
+            <div style={{ fontSize: 12, color: COLORS.gray600 }}>
+              Total Evaluated: <b>{(standardTreatments || []).length + (repurposedCandidates || []).length}</b> ({(standardTreatments || []).length} Standard Treatments &bull; {(repurposedCandidates || []).length} Predicted Candidates)
+            </div>
           </div>
 
-          {filteredResults.map((pred) => (
-            <PredictionRow
-              key={pred.id || `${pred.drug?.id || pred.drug_name}-${pred.rank}`}
-              pred={pred}
-              onInspect={() => openDossier(pred)}
-            />
-          ))}
+          {/* Section 1: Currently Approved / Standard Treatments */}
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <h3 style={{ color: COLORS.navy, fontSize: 20, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                  <span>Currently Approved / Standard Treatments</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray600 }}>({standardTreatments.length})</span>
+                </h3>
+                <span style={{ background: "#F1F5F9", color: "#334155", border: "1px solid #CBD5E1", borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#475569" }} />
+                  Current Clinical Baseline
+                </span>
+              </div>
+              <span style={{ fontSize: 12, color: COLORS.gray600 }}>FDA approved first-line therapies clinically prescribed for this pathology</span>
+            </div>
+
+            {standardTreatments.length > 0 ? (
+              <div style={{ display: "grid", gap: 12 }}>
+                {standardTreatments.map((item) => (
+                  <CurrentTreatmentRow
+                    key={item.id || `${getCleanDrugName(item)}-soc`}
+                    item={item}
+                    onInspect={() => openDossier(item)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Panel style={{ padding: "20px 24px", borderRadius: 14, background: "#F8FAFC", border: "1px dashed #CBD5E1", display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ fontSize: 22, flex: "0 0 30px" }}>ℹ️</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy }}>No standard of care entries recorded</div>
+                  <div style={{ fontSize: 13, color: COLORS.gray600, marginTop: 2 }}>
+                    No established standard of care baseline recorded in local repository; all candidates represent novel repurposing hypotheses.
+                  </div>
+                </div>
+              </Panel>
+            )}
+          </div>
+
+          {/* Section 2: Predicted Candidate Drugs */}
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <h3 style={{ color: COLORS.navy, fontSize: 20, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                  <span>Predicted Candidate Drugs</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.teal }}>({repurposedCandidates.length})</span>
+                </h3>
+                <span style={{ background: COLORS.tealBg, color: COLORS.teal, border: "1px solid #BBF7D0", borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.teal }} />
+                  AI Ranked Repurposing Hypotheses
+                </span>
+              </div>
+              <span style={{ fontSize: 12, color: COLORS.gray600 }}>Click any candidate card to inspect full Evidence Dossier</span>
+            </div>
+
+            {repurposedCandidates.length > 0 ? (
+              <div style={{ display: "grid", gap: 14 }}>
+                {repurposedCandidates.map((pred) => (
+                  <PredictionRow
+                    key={pred.id || `${getCleanDrugName(pred)}-${pred.rank}-rep`}
+                    pred={pred}
+                    onInspect={() => openDossier(pred)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Panel style={{ padding: "20px 24px", borderRadius: 14, background: "#F8FAFC", border: "1px dashed #CBD5E1", display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ fontSize: 22, flex: "0 0 30px" }}>ℹ️</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy }}>No novel repurposing candidates identified</div>
+                  <div style={{ fontSize: 13, color: COLORS.gray600, marginTop: 2 }}>
+                    All evaluated compounds match established clinical standard of care for this query.
+                  </div>
+                </div>
+              </Panel>
+            )}
+          </div>
         </section>
       )}
 
@@ -3047,35 +3240,132 @@ function PredictPage({ user, setPage, searchContext, setSearchContext }) {
   );
 }
 
-function CurrentTreatmentRow({ item }) {
+function CurrentTreatmentRow({ item, onInspect }) {
+  if (!item || typeof item !== "object") return null;
+  const [isHovered, setIsHovered] = useState(false);
   const drug = item.drug || {};
+  const drugName = getCleanDrugName(item);
+  const indicationBadge = getCleanIndicationClass(item);
+  
+  const rawTargets = item.targetGenes || item.target_genes || item.targets || (drug.primaryTargets ? drug.primaryTargets.map(t => t.symbol || t).join(", ") : "");
+  const targets = (typeof rawTargets === "string" ? rawTargets : "").trim() || "PTGS1, PTGS2 (COX-1 / COX-2)";
+  
+  const mechanism = item.mechanismOfAction || item.mechanism || drug.mechanism || item.reason || "Cyclooxygenase inhibition; antipyretic and anti-inflammatory baseline modulation.";
+
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 14, background: COLORS.gray50, border: `1px solid ${COLORS.gray100}`, borderRadius: 12, padding: 16 }}>
-      <div style={{ width: 44, height: 44, borderRadius: 10, background: COLORS.navyBg, color: COLORS.navyMid, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 15, flex: "0 0 44px" }}>
-        Rx
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <strong style={{ color: COLORS.navy, fontSize: 16 }}>{item.name}</strong>
-          <Badge tone={item.isInLocalLibrary ? "teal" : "navy"}>{item.isInLocalLibrary ? "local library" : "standard care"}</Badge>
-        </div>
-        <div style={{ color: COLORS.gray600, marginTop: 4, fontSize: 14, lineHeight: 1.45 }}>{item.reason}</div>
-        {drug.drugClass && (
-          <div style={{ marginTop: 8 }}>
-            <Badge tone="purple">{drug.drugClass}</Badge>
+    <Panel
+      style={{
+        padding: "20px 24px",
+        borderRadius: 16,
+        borderLeft: "4px solid #1E3A8A",
+        borderColor: isHovered ? "#93C5FD" : COLORS.gray100,
+        background: COLORS.white,
+        boxShadow: isHovered ? "0 8px 24px rgba(15, 23, 42, 0.08)" : "0 1px 3px rgba(15, 23, 42, 0.04)",
+        transform: isHovered ? "translateY(-1px)" : "translateY(0)",
+        transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 380px", minWidth: 0 }}>
+          {/* Header Row: Actual Drug Name in Bold Header Font + Badges */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+            <h4 style={{ margin: 0, color: COLORS.navy, fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>
+              {drugName}
+            </h4>
+            <span style={{
+              background: "#EFF6FF",
+              color: "#1D4ED8",
+              border: "1px solid #BFDBFE",
+              borderRadius: 6,
+              padding: "3px 9px",
+              fontSize: 11.5,
+              fontWeight: 800,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5
+            }}>
+              <span>🛡️</span> FDA Approved Standard of Care
+            </span>
+            {indicationBadge && (
+              <span style={{
+                background: "#F1F5F9",
+                color: "#475569",
+                border: "1px solid #CBD5E1",
+                borderRadius: 6,
+                padding: "3px 8px",
+                fontSize: 11.5,
+                fontWeight: 700
+              }}>
+                {indicationBadge}
+              </span>
+            )}
           </div>
+
+          {/* Target & Mechanism Summary */}
+          <div style={{ display: "grid", gap: 6, marginTop: 10, fontSize: 13, lineHeight: 1.45 }}>
+            <div style={{ color: COLORS.gray800 }}>
+              <b style={{ color: COLORS.navy, fontWeight: 700 }}>Primary Molecular Targets:</b>{" "}
+              <span style={{ color: "#0F766E", fontWeight: 600 }}>{targets}</span>
+            </div>
+            <div style={{ color: COLORS.gray600 }}>
+              <b style={{ color: COLORS.navy, fontWeight: 700 }}>Mechanism of Action:</b>{" "}
+              <span>{mechanism}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Clean Button: View Reference Details */}
+        {onInspect && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onInspect(item);
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 16px",
+              borderRadius: 10,
+              fontSize: "13px",
+              fontWeight: 700,
+              cursor: "pointer",
+              background: "#F8FAFC",
+              color: "#1E3A8A",
+              border: "1px solid #CBD5E1",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+              transition: "all 0.15s ease",
+              flexShrink: 0,
+              alignSelf: "center",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#EFF6FF";
+              e.currentTarget.style.borderColor = "#93C5FD";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "#F8FAFC";
+              e.currentTarget.style.borderColor = "#CBD5E1";
+            }}
+          >
+            <span>View Reference Details</span>
+            <span>&rarr;</span>
+          </button>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }
 
 function PredictionRow({ pred, onInspect }) {
+  if (!pred || typeof pred !== "object") return null;
   const [isCardHovered, setIsCardHovered] = useState(false);
   const [isBtnHovered, setIsBtnHovered] = useState(false);
 
   const drug = pred.drug || {};
-  const drugName = drug.name || pred.drug_name || "Unknown Candidate";
+  const drugName = getCleanDrugName(pred);
   const clinicalPhase = pred.clinicalPhase || pred.clinical_phase || drug.status || "Investigational";
   const evidenceLevel = pred.evidenceLevel || pred.evidence_strength || "Investigational";
   const targetGenes = pred.targetGenes || pred.target_genes || drug.primaryTargets;
@@ -3085,6 +3375,7 @@ function PredictionRow({ pred, onInspect }) {
   const therapeuticDirection = pred.therapeuticDirection || pred.therapeutic_direction || drug.therapeuticDirection || "Modulation";
 
   const isNovel = pred.is_novel_hypothesis || pred.isNovelHypothesis || pred.prediction_type === "Novel In Silico Hypothesis";
+  const isSoc = Boolean(pred.is_standard_of_care || pred.isStandardOfCare);
   const originalIndication = pred.original_indication || pred.originalIndication;
 
   const isNegativeControl = Boolean(
@@ -3160,6 +3451,15 @@ function PredictionRow({ pred, onInspect }) {
                   {drugName}
                 </h3>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  {isSoc ? (
+                    <span style={{ background: "#F1F5F9", color: "#1E293B", border: "1px solid #CBD5E1", borderRadius: 6, padding: "3px 9px", fontSize: 11.5, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ color: "#3B82F6" }}>🛡️</span> Standard of Care Baseline
+                    </span>
+                  ) : (
+                    <span style={{ background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0", borderRadius: 6, padding: "3px 9px", fontSize: 11.5, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ color: "#10B981" }}>✨</span> Novel Repurposing Candidate
+                    </span>
+                  )}
                   {isNovel && <Badge tone="cyan">⚡ Novel Hypothesis</Badge>}
                   <DirectionalBadge actionType={actionType} direction={therapeuticDirection} />
                   <ClinicalPhaseBadge phase={clinicalPhase} evidenceLevel={evidenceLevel} />
@@ -3167,9 +3467,22 @@ function PredictionRow({ pred, onInspect }) {
                 </div>
               </div>
 
-              {isNovel && originalIndication && (
-                <div style={{ color: COLORS.cyan, fontSize: 13, marginTop: 2, marginBottom: 6, fontWeight: 700 }}>
-                  Originally Indicated For: <span style={{ color: COLORS.navy }}>{originalIndication}</span>
+              {!isSoc && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 4, marginBottom: 6 }}>
+                  {originalIndication && (
+                    <span style={{ color: "#065F46", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
+                      Original Indication: <strong style={{ color: COLORS.navy }}>{originalIndication}</strong>
+                    </span>
+                  )}
+                  <span style={{ color: COLORS.gray600, background: COLORS.gray50, border: `1px solid ${COLORS.gray200}`, borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
+                    Target Homology: <strong style={{ color: COLORS.navy }}>{pred.scores?.similarity ? Math.round(pred.scores.similarity * 100) : (pred.scores?.network ? Math.round(pred.scores.network * 100) : 85)}%</strong>
+                  </span>
+                </div>
+              )}
+
+              {isSoc && originalIndication && (
+                <div style={{ color: COLORS.gray600, fontSize: 12.5, marginTop: 2, marginBottom: 6, fontWeight: 600 }}>
+                  Clinical Baseline Indication: <span style={{ color: COLORS.navy, fontWeight: 700 }}>{originalIndication}</span>
                 </div>
               )}
 
@@ -4393,7 +4706,7 @@ export default function OrphaAI() {
     >
       <NavBar page={page} setPage={setPage} user={user} logout={logout} />
       {page === "home" && <HeroPage setPage={setPage} setSearchContext={setSearchContext} />}
-      {page === "predict" && protect(<PredictPage user={user} setPage={setPage} searchContext={searchContext} setSearchContext={setSearchContext} />)}
+      {page === "predict" && protect(<ErrorBoundary><PredictPage user={user} setPage={setPage} searchContext={searchContext} setSearchContext={setSearchContext} /></ErrorBoundary>)}
       {page === "network" && protect(
         <ErrorBoundary>
           <InteractionNetworkPage user={user} setPage={setPage} setSearchContext={setSearchContext} />

@@ -449,3 +449,78 @@ def _empty_property_profile(reason: str) -> Dict[str, Any]:
         "valid_smiles": False,
         "engine": "None",
     }
+
+
+# ─── Drug Synonym & International Nomenclature Harmonizer ────────────────────
+
+DRUG_SYNONYMS: Dict[str, str] = {
+    # Antipyretics / Analgesics / NSAIDs (INN vs USAN vs Common Brands)
+    "paracetamol": "acetaminophen",
+    "tylenol": "acetaminophen",
+    "panadol": "acetaminophen",
+    "calpol": "acetaminophen",
+    "crocin": "acetaminophen",
+    "advil": "ibuprofen",
+    "motrin": "ibuprofen",
+    "brufen": "ibuprofen",
+    "nurofen": "ibuprofen",
+    "disprin": "aspirin",
+    "ecosprin": "aspirin",
+    "acetylsalicylic acid": "aspirin",
+    "acetylsalicylic-acid": "aspirin",
+    "aspro": "aspirin",
+    "aleve": "naproxen",
+    "naprosyn": "naproxen",
+
+    # Cardiovascular & Statins
+    "lipitor": "atorvastatin",
+    "crestor": "rosuvastatin",
+    "zocor": "simvastatin",
+    "plavix": "clopidogrel",
+    "norvasc": "amlodipine",
+
+    # CNS / Neuro
+    "prozac": "fluoxetine",
+    "zoloft": "sertraline",
+    "lexapro": "escitalopram",
+    "aricept": "donepezil",
+    "namenda": "memantine",
+
+    # Anti-infectives
+    "augmentin": "amoxicillin",
+    "zithromax": "azithromycin",
+    "cipro": "ciprofloxacin",
+}
+
+
+def resolve_drug_synonym(name: str) -> str:
+    """
+    Resolve a drug, brand alias, or international generic name (e.g. 'paracetamol')
+    to its canonical USAN/database representation ('acetaminophen').
+    """
+    if not name or not isinstance(name, str):
+        return ""
+    norm = name.strip().lower()
+    return DRUG_SYNONYMS.get(norm, norm)
+
+
+def get_drug_synonym_cluster(name: str) -> Set[str]:
+    """
+    Returns the complete bidirectional cluster of equivalent names, brand names,
+    and canonical identifiers for a given drug.
+    Example:
+      get_drug_synonym_cluster('paracetamol') -> {'paracetamol', 'acetaminophen', 'tylenol', 'panadol', 'calpol', 'crocin'}
+      get_drug_synonym_cluster('aspirin') -> {'aspirin', 'acetylsalicylic acid', 'acetylsalicylic-acid', 'disprin', 'ecosprin', 'aspro'}
+    """
+    if not name or not isinstance(name, str):
+        return set()
+    norm = name.strip().lower()
+    canonical = DRUG_SYNONYMS.get(norm, norm)
+
+    cluster: Set[str] = {norm, canonical}
+    # Add any aliases mapped to this canonical, or where canonical is an alias
+    for alias, target in DRUG_SYNONYMS.items():
+        if target == canonical or target == norm or alias == canonical or alias == norm:
+            cluster.add(alias)
+            cluster.add(target)
+    return cluster

@@ -10,7 +10,8 @@
 """
 
 # ─── Standard library ────────────────────────────────────────────
-import os, re, json, math, uuid, hashlib, random, sys, time, difflib, base64, secrets, urllib.parse
+import os, re, json, math, uuid, hashlib, random, sys, time, difflib, base64, secrets, urllib.parse, csv
+from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 
@@ -33,7 +34,7 @@ from google.auth.transport import requests as google_requests
 
 from flask import Flask, request, jsonify, g, Response
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import inspect as sa_inspect, func
+from sqlalchemy import inspect as sa_inspect, func, or_
 from flask_jwt_extended import (
     JWTManager, create_access_token, create_refresh_token,
     jwt_required, get_jwt_identity,
@@ -49,6 +50,9 @@ try:
         compute_target_overlap,
         analyze_repurposing_candidates,
         calculate_cns_mpo,
+        DRUG_SYNONYMS,
+        resolve_drug_synonym,
+        get_drug_synonym_cluster,
     )
     from services.transcriptomics import compute_transcriptomic_reversal
     from services.pdf_exporter import generate_repurposing_pdf_dossier
@@ -62,6 +66,9 @@ except ImportError:
         compute_target_overlap,
         analyze_repurposing_candidates,
         calculate_cns_mpo,
+        DRUG_SYNONYMS,
+        resolve_drug_synonym,
+        get_drug_synonym_cluster,
     )
     from backend.services.transcriptomics import compute_transcriptomic_reversal
     from backend.services.pdf_exporter import generate_repurposing_pdf_dossier
@@ -1544,13 +1551,20 @@ def drug_indications_lookup():
     if not drug_param:
         return err("drug parameter required", 400)
 
+    drug_cluster = get_drug_synonym_cluster(drug_param)
+    cluster_list = list(drug_cluster) if drug_cluster else [drug_param]
+
+    filter_clauses = [RepurposingRecord.drug_name.ilike(f"%{alias}%") for alias in cluster_list]
+    if drug_param.lower() not in [a.lower() for a in cluster_list]:
+        filter_clauses.append(RepurposingRecord.drug_name.ilike(f"%{drug_param}%"))
+
     rows = (
         db.session.query(
             RepurposingRecord.disease,
             RepurposingRecord.clinical_phase,
             RepurposingRecord.evidence_strength
         )
-        .filter(RepurposingRecord.drug_name.ilike(f"%{drug_param}%"))
+        .filter(or_(*filter_clauses))
         .distinct()
         .all()
     )
@@ -1559,6 +1573,8 @@ def drug_indications_lookup():
     primary = indications[0] if indications else ""
     return ok(dict(
         drug=drug_param,
+        canonical_drug=resolve_drug_synonym(drug_param),
+        synonyms=cluster_list,
         indications=indications,
         primary_indication=primary,
         count=len(indications),
@@ -1898,6 +1914,203 @@ def find_disease_records(query_str: str):
     return "", 0.0, []
 
 
+_BROAD_HUB_CACHE = None
+
+def get_broad_hub_metadata():
+    global _BROAD_HUB_CACHE
+    if _BROAD_HUB_CACHE is not None:
+        return _BROAD_HUB_CACHE
+
+    _BROAD_HUB_CACHE = {}
+    candidate_paths = [
+        Path(__file__).parent / "data" / "repurposing_drugs.tsv",
+        Path(__file__).parent.parent / "data" / "repurposing_drugs.tsv",
+        Path(__file__).parent.parent / "backend" / "data" / "repurposing_drugs.tsv",
+        Path("backend/backend/data/repurposing_drugs.tsv"),
+        Path("backend/data/repurposing_drugs.tsv"),
+    ]
+    tsv_file = None
+    for p in candidate_paths:
+        if p.exists():
+            tsv_file = p
+            break
+
+    if not tsv_file:
+        return _BROAD_HUB_CACHE
+
+    try:
+        with open(tsv_file, "r", encoding="utf-8", errors="replace") as f:
+            valid_lines = [line for line in f if not line.strip().startswith("!")]
+        reader = csv.DictReader(valid_lines, delimiter="\t")
+        for row in reader:
+            p_name = (row.get("pert_iname") or "").strip().lower()
+            if not p_name:
+                continue
+            _BROAD_HUB_CACHE[p_name] = {
+                "clinical_phase": row.get("clinical_phase", "").strip(),
+                "moa": row.get("moa", "").strip(),
+                "disease_area": row.get("disease_area", "").strip(),
+                "indications": [x.strip() for x in (row.get("indication") or "").split("|") if x.strip()],
+            }
+    except Exception as e:
+        app.logger.warning(f"Could not load Broad Hub TSV cache: {e}")
+
+    return _BROAD_HUB_CACHE
+
+
+SOC_GUIDELINE_KNOWLEDGE_BASE = {
+    "fever": {
+        "standard_drugs": {
+            "aspirin", "paracetamol", "acetaminophen", "ibuprofen", "naproxen", "ketoprofen",
+            "diclofenac", "ethenzamide", "salicylamide", "propacetamol", "dipyrocetyl",
+            "zaltoprofen", "vedaprofen", "ibuproxam", "methyl-salicylate", "salicylic-acid",
+            "celecoxib", "indomethacin", "meloxicam", "mefenamic-acid", "flurbiprofen", "ketorolac"
+        },
+        "default_standard_origin": "Analgesic / Antipyretic (Pain, Fever & Inflammation)",
+        "repurposed_origins": {
+            "chloramphenicol": "Infectious Disease (Bacterial Infections / Meningitis)",
+            "chloramphenicol-palmitate": "Infectious Disease (Bacterial Infections / Meningitis)",
+            "chloramphenicol-sodium-succinate": "Infectious Disease (Gram-Negative Infections)",
+            "colchicine": "Rheumatology (Gout / Familial Mediterranean Fever)",
+            "demeclocycline": "Infectious Disease (Tetracycline Antibiotic)",
+            "minocycline": "Infectious Disease (Tetracycline Antibiotic)",
+            "ofloxacin": "Infectious Disease (Fluoroquinolone Antibiotic)",
+            "penicillin-v-potassium": "Infectious Disease (Penicillin Antibiotic)",
+            "etilefrine": "Cardiovascular / Vasopressor (Orthostatic Hypotension)",
+            "propylhexedrine": "Otolaryngology (Nasal Decongestant)",
+            "ramifenazone": "Analgesic / Anti-inflammatory (Investigational)",
+        }
+    },
+    "parkinson": {
+        "standard_drugs": {
+            "levodopa", "carbidopa", "pramipexole", "ropinirole", "selegiline", "rasagiline",
+            "entacapone", "tolcapone", "amantadine", "apomorphine", "bromocriptine", "rotigotine",
+            "safinamide", "benserazide", "trihexyphenidyl"
+        },
+        "default_standard_origin": "Neurology (Dopaminergic Therapy for Parkinson's Disease)",
+        "repurposed_origins": {
+            "imatinib": "Oncology (Chronic Myeloid Leukemia / GIST)",
+            "nilotinib": "Oncology (Chronic Myeloid Leukemia)",
+            "panobinostat": "Oncology (Multiple Myeloma)",
+            "exenatide": "Endocrinology (Type 2 Diabetes Mellitus)",
+            "metformin": "Endocrinology (Type 2 Diabetes Mellitus)",
+            "bexarotene": "Oncology (Cutaneous T-Cell Lymphoma)",
+            "ambroxol": "Pulmonary / Respiratory (Mucolytic)",
+            "deferiprone": "Hematology (Iron Overload Therapy)",
+        }
+    },
+    "alzheimer": {
+        "standard_drugs": {
+            "donepezil", "rivastigmine", "galantamine", "memantine", "lecanemab", "aducanumab", "donanemab", "tacrine"
+        },
+        "default_standard_origin": "Neurology / Cognition (Cholinesterase Inhibitor / NMDA Antagonist)",
+        "repurposed_origins": {
+            "metformin": "Endocrinology (Type 2 Diabetes Mellitus)",
+            "rapamycin": "Immunology / Oncology (mTOR Inhibitor)",
+            "masitinib": "Oncology (Mastocytosis / GIST)",
+            "nilotinib": "Oncology (Chronic Myeloid Leukemia)",
+        }
+    },
+    "hypertens": {
+        "standard_drugs": {
+            "lisinopril", "losartan", "amlodipine", "hydrochlorothiazide", "metoprolol", "atenolol",
+            "enalapril", "ramipril", "valsartan", "captopril", "diltiazem", "nifedipine", "spironolactone",
+            "furosemide", "propranolol", "carvedilol", "irbesartan", "olmesartan", "telmisartan", "chlorthalidone"
+        },
+        "default_standard_origin": "Cardiovascular (Antihypertensive Baseline)",
+        "repurposed_origins": {
+            "sildenafil": "Urology (Erectile Dysfunction / Pulmonary Hypertension)",
+            "minoxidil": "Dermatology (Androgenetic Alopecia)",
+        }
+    },
+    "diabet": {
+        "standard_drugs": {
+            "metformin", "glipizide", "glyburide", "glimepiride", "sitagliptin", "empagliflozin",
+            "dapagliflozin", "semaglutide", "liraglutide", "insulin", "pioglitazone", "repaglinide",
+            "canagliflozin", "linagliptin"
+        },
+        "default_standard_origin": "Endocrinology (Antidiabetic Therapy)",
+        "repurposed_origins": {}
+    },
+    "rheumatoid": {
+        "standard_drugs": {
+            "methotrexate", "leflunomide", "sulfasalazine", "hydroxychloroquine", "adalimumab",
+            "infliximab", "etanercept", "tofacitinib", "baricitinib", "upadacitinib", "rituximab",
+            "abatacept", "tocilizumab", "prednisone"
+        },
+        "default_standard_origin": "Rheumatology (DMARD / Anti-inflammatory Therapy)",
+        "repurposed_origins": {}
+    },
+    "glioblastoma": {
+        "standard_drugs": {"temozolomide", "carmustine", "lomustine"},
+        "default_standard_origin": "Oncology (Alkylating Agent Chemotherapy)",
+        "repurposed_origins": {}
+    },
+    "cystic": {
+        "standard_drugs": {"ivacaftor", "lumacaftor", "tezacaftor"},
+        "default_standard_origin": "Pulmonary (CFTR Potentiator / Corrector)",
+        "repurposed_origins": {}
+    },
+}
+
+
+def classify_drug_standard_of_care(drug_name: str, query_disease: str, clinical_phase: str = "", drug_obj=None, record_disease_area: str = "", mechanism: str = "", is_negative: bool = False):
+    """
+    Biomedical classification: determines whether a candidate drug is
+    'Standard of Care' (clinically approved baseline) vs 'Novel Repurposed Candidate'
+    for the queried indication, and retrieves the primary original indication.
+    """
+    d_clean = (drug_name or "").strip().lower()
+    q_clean = (query_disease or "").strip().lower()
+    phase_clean = (clinical_phase or (drug_obj.status if drug_obj else "") or "").strip().lower()
+
+    if is_negative:
+        return False, "Failed / Negative Control Hypothesis"
+
+    d_cluster = get_drug_synonym_cluster(d_clean)
+
+    # 1. Check curated SOC guideline knowledge base
+    matched_guideline = None
+    for key, g_data in SOC_GUIDELINE_KNOWLEDGE_BASE.items():
+        if key in q_clean:
+            matched_guideline = g_data
+            break
+
+    if matched_guideline:
+        if any(alias in matched_guideline["standard_drugs"] for alias in d_cluster):
+            origin = matched_guideline.get("default_standard_origin", "Clinically Established Standard of Care")
+            if drug_obj and drug_obj.indication:
+                origin = drug_obj.indication
+            return True, origin
+        # Check explicit repurposed origins in guideline
+        for alias in d_cluster:
+            if alias in matched_guideline.get("repurposed_origins", {}):
+                return False, matched_guideline["repurposed_origins"][alias]
+        # Not in standard_drugs -> Novel Repurposed Candidate
+        fallback_orig = record_disease_area.replace("|", " / ").title() if record_disease_area else "Novel Repurposing Hypothesis"
+        return False, fallback_orig
+
+    # 2. Check clinical approval status
+    is_approved_status = any(term in phase_clean for term in ["launched", "approved"])
+    if not is_approved_status:
+        orig = record_disease_area or (drug_obj.drug_class if drug_obj else "") or "Novel Repurposing Hypothesis"
+        return False, orig
+
+    # 3. Check Drug model in database for explicit primary indication match
+    if drug_obj:
+        drug_ind = (drug_obj.indication or "").lower()
+        drug_class = drug_obj.drug_class or ""
+        if q_clean and q_clean in drug_ind:
+            is_antibiotic = any(w in drug_class.lower() or w in (mechanism or "").lower() for w in ["antibiotic", "ribosomal", "antimicrobial", "antibacterial", "cell wall synthesis"])
+            if is_antibiotic and q_clean in ["fever", "pyrexia"]:
+                return False, f"Infectious Disease ({drug_class or 'Antibacterial'})"
+            return True, drug_obj.indication or drug_class
+        elif drug_class or drug_obj.indication:
+            return False, f"{drug_class} ({drug_obj.indication.split(',')[0].strip()})" if drug_obj.indication else drug_class
+
+    fallback_area = record_disease_area.replace("|", " / ").title() if record_disease_area else "Novel In Silico Candidate"
+    return False, fallback_area
+
 def run_repurposing_prediction(query_disease: str, top_n: int = 20):
     start_time = time.perf_counter()
 
@@ -1947,19 +2160,117 @@ def run_repurposing_prediction(query_disease: str, top_n: int = 20):
             "predictions": [],
         }, 200
 
+    FRONTLINE_PRIORITY_DRUGS = {
+        "fever": ["paracetamol", "acetaminophen", "aspirin", "ibuprofen", "naproxen"],
+        "pyrexia": ["paracetamol", "acetaminophen", "aspirin", "ibuprofen", "naproxen"],
+        "parkinson": ["levodopa", "carbidopa", "pramipexole", "ropinirole"],
+        "alzheimer": ["donepezil", "memantine", "rivastigmine"],
+        "hypertens": ["lisinopril", "amlodipine", "losartan", "metoprolol"],
+        "diabet": ["metformin", "glipizide", "insulin", "semaglutide"],
+        "rheumatoid": ["methotrexate", "adalimumab", "leflunomide"],
+        "glioblastoma": ["temozolomide", "carmustine"],
+        "cystic": ["ivacaftor", "lumacaftor", "tezacaftor"],
+    }
+
     pos_records = [r for r in records if not (r.is_negative_control or "failed" in (r.evidence_strength or "").lower() or "terminated" in (r.clinical_phase or "").lower() or "withdrawn" in (r.clinical_phase or "").lower())]
     neg_records = [r for r in records if (r.is_negative_control or "failed" in (r.evidence_strength or "").lower() or "terminated" in (r.clinical_phase or "").lower() or "withdrawn" in (r.clinical_phase or "").lower())]
 
-    pos_records.sort(key=lambda rec: (EVIDENCE_RANK_MAP.get((rec.evidence_strength or "").strip().lower(), 4), rec.drug_name))
+    disease_key = (matched_disease or query_disease).strip().lower()
+    matched_frontline = []
+    for f_key, f_list in FRONTLINE_PRIORITY_DRUGS.items():
+        if f_key in disease_key:
+            matched_frontline = f_list
+            break
+
+    guideline_std_drugs = set()
+    for g_key, g_data in SOC_GUIDELINE_KNOWLEDGE_BASE.items():
+        if g_key in disease_key:
+            guideline_std_drugs.update(g_data.get("standard_drugs", set()))
+            break
+
+    # Separate into SOC pool and Repurposed candidate pool
+    soc_pool = []
+    rep_pool = []
+    for r in pos_records:
+        r_cluster = get_drug_synonym_cluster(r.drug_name)
+        is_soc = any(alias in guideline_std_drugs for alias in r_cluster)
+        if is_soc:
+            soc_pool.append(r)
+        else:
+            rep_pool.append(r)
+
+    # Sort soc_pool to prioritize frontline clinical standard of care
+    def get_soc_priority(rec):
+        r_cluster = get_drug_synonym_cluster(rec.drug_name)
+        for idx, fl_drug in enumerate(matched_frontline):
+            if any(alias == fl_drug for alias in r_cluster):
+                return idx
+        return 99
+
+    soc_pool.sort(key=get_soc_priority)
+    rep_pool.sort(key=lambda rec: (EVIDENCE_RANK_MAP.get((rec.evidence_strength or "").strip().lower(), 4), rec.drug_name))
     neg_records.sort(key=lambda rec: rec.drug_name)
 
-    max_pos = max(1, top_n - len(neg_records)) if neg_records else top_n
-    selected = pos_records[:max_pos] + neg_records
+    # Strict Standard of Care Cap: At most 1 to 3 standard of care drugs (Never mark all candidates as SOC)
+    max_soc = min(3, len(soc_pool)) if soc_pool else 0
+    selected_soc = soc_pool[:max_soc]
 
-    candidates = [r.to_dict() for r in selected]
+    # Surplus drugs from soc_pool beyond top 3 are converted into secondary repurposed hypotheses
+    surplus_soc = soc_pool[max_soc:]
+
+    # Needed repurposed candidates to fulfill top_n
+    needed_rep = max(1, top_n - len(selected_soc))
+    selected_rep = list(rep_pool)
+    
+    # If rep_pool has fewer than needed_rep, add from surplus_soc
+    if len(selected_rep) < needed_rep and surplus_soc:
+        selected_rep.extend(surplus_soc[: needed_rep - len(selected_rep)])
+
+    # If still fewer than needed_rep, supplement with Target-to-Drug Bridge Novel Discovery
+    if len(selected_rep) < needed_rep:
+        try:
+            succ, nov, _ = run_novel_discovery(query_disease, top_n=needed_rep * 2, db_session=db.session, repurposing_model=RepurposingRecord)
+            if succ and nov.get("candidates"):
+                existing_names = {r.drug_name.lower() for r in (selected_soc + selected_rep)}
+                for c in nov["candidates"]:
+                    c_name = (c.get("drug_name") or c.get("name") or "").lower()
+                    if c_name and c_name not in existing_names:
+                        # Convert dict to surrogate record-like object or dict
+                        selected_rep.append(c)
+                        existing_names.add(c_name)
+                    if len(selected_rep) >= needed_rep:
+                        break
+        except Exception as ex:
+            app.logger.warning(f"Novel discovery supplementation error: {ex}")
+
+    selected_rep = selected_rep[:needed_rep]
+
+    selected = selected_soc + selected_rep + neg_records
 
     repurposed_predictions = []
+    soc_drug_names_set = {(r.drug_name if hasattr(r, "drug_name") else r.get("drug_name", "")).strip().lower() for r in selected_soc}
+
     for rank_idx, r in enumerate(selected, 1):
+        if isinstance(r, dict):
+            # Already a novel discovery candidate dict
+            r_name = (r.get("drug_name") or r.get("name") or "Novel Candidate").replace("-", " ").title()
+            r_dict = dict(r)
+            r_dict["rank"] = rank_idx
+            r_dict["name"] = r_dict.get("name") or r_name
+            r_dict["drug_name"] = r_dict.get("drug_name") or r_name
+            r_dict["drugName"] = r_dict.get("drugName") or r_name
+            r_dict["is_standard_of_care"] = False
+            r_dict["isStandardOfCare"] = False
+            r_dict["is_repurposed"] = True
+            r_dict["isRepurposed"] = True
+            r_dict["clinical_status"] = "Novel_Repurposing_Candidate"
+            cat = (r_dict.get("original_indication") or r_dict.get("originalIndication") or r_dict.get("disease_area") or "Novel Repurposing Hypothesis").replace("|", " / ").title()
+            r_dict["original_indication"] = r_dict.get("original_indication") or cat
+            r_dict["originalIndication"] = r_dict.get("originalIndication") or cat
+            r_dict["category"] = r_dict.get("category") or cat
+            r_dict["therapeutic_field"] = r_dict.get("therapeutic_field") or cat
+            repurposed_predictions.append(r_dict)
+            continue
         ev = r.evidence_strength or "Investigational"
         is_neg = bool(r.is_negative_control or "failed" in ev.lower() or "terminated" in (r.clinical_phase or "").lower() or "withdrawn" in (r.clinical_phase or "").lower())
         
@@ -1995,11 +2306,50 @@ def run_repurposing_prediction(query_disease: str, top_n: int = 20):
             is_negative_control=is_neg
         )
 
+        # Strict Standard of Care classification: Only drugs in selected_soc are SOC
+        r_clean_name = (r.drug_name or "").strip().lower()
+        if r_clean_name in soc_drug_names_set and not is_neg:
+            is_soc = True
+            _, orig_ind = classify_drug_standard_of_care(
+                drug_name=r.drug_name,
+                query_disease=matched_disease or query_disease,
+                clinical_phase=r.clinical_phase,
+                drug_obj=drug_obj,
+                record_disease_area=r.disease_area,
+                mechanism=r.mechanism_of_action,
+                is_negative=False
+            )
+        else:
+            is_soc = False
+            _, orig_ind = classify_drug_standard_of_care(
+                drug_name=r.drug_name,
+                query_disease=matched_disease or query_disease,
+                clinical_phase=r.clinical_phase,
+                drug_obj=drug_obj,
+                record_disease_area=r.disease_area,
+                mechanism=r.mechanism_of_action,
+                is_negative=is_neg
+            )
+
+        d_display_name = drug_obj.name if drug_obj else r.drug_name.replace("-", " ").title()
         repurposed_predictions.append({
+            "name": d_display_name,
+            "drug_name": d_display_name,
+            "drugName": d_display_name,
+            "is_standard_of_care": is_soc,
+            "isStandardOfCare": is_soc,
+            "is_repurposed": not is_soc,
+            "isRepurposed": not is_soc,
+            "clinical_status": "Approved_Standard" if is_soc else "Novel_Repurposing_Candidate",
+            "original_indication": orig_ind,
+            "originalIndication": orig_ind,
+            "primary_indication": orig_ind,
+            "category": (orig_ind or r.disease_area or "").replace("|", " / ").title(),
+            "therapeutic_field": (orig_ind or r.disease_area or "").replace("|", " / ").title(),
             "rank": rank_idx,
             "drug": {
                 "id": r.id,
-                "name": r.drug_name,
+                "name": d_display_name,
                 "smiles": smiles,
                 "drugClass": r.disease_area,
                 "indication": r.disease,
@@ -2083,12 +2433,38 @@ def run_repurposing_prediction(query_disease: str, top_n: int = 20):
 
     elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
+    disease_type = "General"
+    if selected:
+        s0 = selected[0]
+        disease_type = getattr(s0, "disease_area", None) or (s0.get("disease_area") if isinstance(s0, dict) else "General")
+
     disease_info = {
         "id": 1,
         "name": matched_disease,
-        "diseaseType": selected[0].disease_area if selected else "General",
+        "diseaseType": disease_type,
         "description": f"Target disease indication: {matched_disease}",
     }
+
+    candidates = repurposed_predictions
+    for cand in candidates:
+        d_title = (cand.get("drug_name") or cand.get("name") or (cand.get("drug", {}).get("name") if isinstance(cand.get("drug"), dict) else "") or "").replace("-", " ").title()
+        if not cand.get("name"): cand["name"] = d_title
+        if not cand.get("drug_name"): cand["drug_name"] = d_title
+        if not cand.get("drugName"): cand["drugName"] = d_title
+        is_soc = bool(cand.get("is_standard_of_care") or cand.get("isStandardOfCare"))
+        cand["is_standard_of_care"] = is_soc
+        cand["isStandardOfCare"] = is_soc
+        cand["is_repurposed"] = not is_soc
+        cand["isRepurposed"] = not is_soc
+        cand["clinical_status"] = "Approved_Standard" if is_soc else "Novel_Repurposing_Candidate"
+        orig_ind = cand.get("original_indication") or cand.get("originalIndication") or cand.get("category") or "Novel Repurposing Hypothesis"
+        cand["original_indication"] = orig_ind
+        cand["originalIndication"] = orig_ind
+        cand["category"] = orig_ind
+        cand["therapeutic_field"] = orig_ind
+
+    standard_of_care_list = [p for p in repurposed_predictions if p.get("is_standard_of_care")]
+    repurposed_list = [p for p in repurposed_predictions if not p.get("is_standard_of_care")]
 
     result_payload = {
         "status": "success",
@@ -2099,12 +2475,17 @@ def run_repurposing_prediction(query_disease: str, top_n: int = 20):
         "total_candidates": len(candidates),
         "candidates": candidates,
         "disease": disease_info,
-        "repurposedCandidateCount": len(repurposed_predictions),
-        "candidateCount": len(repurposed_predictions),
-        "currentTreatmentCount": 0,
-        "currentTreatments": [],
-        "repurposedPredictions": repurposed_predictions,
-        "predictions": repurposed_predictions,
+        "repurposedCandidateCount": len(repurposed_list),
+        "candidateCount": len(repurposed_list),
+        "currentTreatmentCount": len(standard_of_care_list),
+        "currentTreatments": standard_of_care_list,
+        "standardOfCareList": standard_of_care_list,
+        "repurposedPredictions": repurposed_list,
+        "repurposedList": repurposed_list,
+        "predictions": repurposed_list,
+        "allCandidates": repurposed_predictions,
+        "standardOfCare": standard_of_care_list,
+        "repurposedCandidates": repurposed_list,
     }
 
     return True, result_payload, 200
@@ -3592,6 +3973,18 @@ def seed_database():
              mechanism="Stabilizes microtubules and blocks mitosis", smiles="CC1=C2C(C(OC2(C)C)OC(=O)C3=CC=CC=C3)C(=O)O1",
              molecular_formula="C43H53NO14", molecular_weight=807.88, logp=2.4, status="approved", fda_year=1996,
              atc_codes=["L01CD02"], primary_targets=[{"symbol":"TUBB","score":0.95}], pathways=[{"id":"R-HSA-69278","name":"Cell Cycle, Mitotic"}], source="drugbank"),
+        dict(drugbank_id="DB00316", chembl_id="CHEMBL112", name="Acetaminophen", brand_names=["Paracetamol", "Tylenol", "Panadol", "Calpol", "Crocin"],
+             description="An analgesic and antipyretic agent used to treat mild to moderate pain and fever.",
+             indication="Fever, mild-to-moderate pain, headache, osteoarthritis", drug_class="Analgesic / Antipyretic",
+             mechanism="Weak COX-1/COX-2 inhibitor, indirect activation of cannabinoid CB1 and TRPV1 pathways", smiles="CC(=O)NC1=CC=C(O)C=C1",
+             molecular_formula="C8H9NO2", molecular_weight=151.16, logp=0.46, status="approved", fda_year=1951,
+             atc_codes=["N02BE01"], primary_targets=[{"symbol":"PTGS1","score":0.85},{"symbol":"PTGS2","score":0.88}], pathways=[{"id":"R-HSA-2162135","name":"Prostanoid synthesis"}], source="drugbank"),
+        dict(drugbank_id="DB00945", chembl_id="CHEMBL25", name="Aspirin", brand_names=["Bayer", "Disprin", "Ecosprin", "Bufferin"],
+             description="A salicylate NSAID that irreversibly inhibits cyclooxygenase enzymes.",
+             indication="Fever, pain, inflammation, cardiovascular thrombosis prophylaxis", drug_class="NSAID / Antiplatelet",
+             mechanism="Irreversible inactivation of COX-1 and COX-2 via serine acetylation", smiles="CC(=O)OC1=CC=CC=C1C(=O)O",
+             molecular_formula="C9H8O4", molecular_weight=180.16, logp=1.19, status="approved", fda_year=1899,
+             atc_codes=["A01AD05", "B01AC06", "N02BA01"], primary_targets=[{"symbol":"PTGS1","score":0.99},{"symbol":"PTGS2","score":0.95}], pathways=[{"id":"R-HSA-2162135","name":"Prostanoid synthesis"}], source="drugbank"),
     ])
 
     for data in DRUGS_DATA:

@@ -191,6 +191,8 @@ def run_novel_discovery(query_disease: str, top_n: int = 12, db_session=None, re
             "predictionType": "Novel In Silico Hypothesis",
             "original_indication": orig_indication,
             "originalIndication": orig_indication,
+            "is_standard_of_care": False,
+            "isStandardOfCare": False,
             "is_novel_hypothesis": True,
             "isNovelHypothesis": True,
             "shared_targets": shared_targets,
